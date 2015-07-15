@@ -5,6 +5,12 @@ Created on Wed Jul 15 16:06:31 2015
 @author: jaelman
 """
 
+import pandas as pd
+from glob import glob
+from sas7bdat import SAS7BDAT
+import re
+import os
+
 def get_sublist(pth,globstr):
     filelist = glob(os.path.join(pth,globstr))
     sublist = [re.sub('.*[Left,Right]-','',w) for w in filelist]
@@ -31,3 +37,17 @@ vetsaid = vetsa2df.vetsaid
 # before re-generating and merging edat files.         #
 ########################################################
 
+## Get file listings of UCSD data. 
+# Computer 405
+globstr = '*.txt'
+pth = 'K:/data/SimpleRT/405'
+vetsaidUC405 = pd.Series(get_sublist(pth,globstr), name='vetsaid')
+# Computer 406
+pth = 'K:/data/SimpleRT/406'
+vetsaidUC406 = pd.Series(get_sublist(pth,globstr), name='vetsaid')
+
+# Find subjects with data on both computers
+# Duplicate files have been manually removed. This should not 
+# find any duplicates between computers 103 and 104.
+UCdups = list(set(vetsaidUC405).intersection(set(vetsaidUC406)))
+UCdups = pd.Series(UCdups, name='vetsaid')

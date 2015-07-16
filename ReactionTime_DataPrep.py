@@ -9,7 +9,7 @@ import pandas as pd
 from glob import glob
 from sas7bdat import SAS7BDAT
 import re
-import os
+import os, time
 
 def get_sublist(pth,globstr):
     filelist = glob(os.path.join(pth,globstr))
@@ -19,10 +19,15 @@ def get_sublist(pth,globstr):
     sublist = [re.sub('-2','B',w) for w in sublist]
     return sublist
     
+def get_mtime(pth, globstr):
+    filelist = glob(os.path.join(pth, globstr))    
+    mtimes = [time.ctime(os.path.getmtime(f)) for f in filelist]
+    return mtimes
+    
 #################################################################
 
 # Get VETSA 2 data  
-datapath = 'K:/data\VETSA2_April2015/vetsa2merged_23apr2015.sas7bdat'
+datapath = 'K:/data/VETSA2_April2015/vetsa2merged_23apr2015.sas7bdat'
 with SAS7BDAT(datapath) as f:
     vetsa2df = f.to_data_frame()
     
@@ -40,14 +45,35 @@ vetsaid = vetsa2df.vetsaid
 ## Get file listings of UCSD data. 
 # Computer 405
 globstr = '*.txt'
-pth = 'K:/data/SimpleRT/405'
-vetsaidUC405 = pd.Series(get_sublist(pth,globstr), name='vetsaid')
+pth = 'K:/data/ReactionTime/UCSD/405'
+vetsaidUC405 = pd.DataFrame({'vetsaid': get_sublist(pth,globstr), 
+                             'mtime': get_mtime(pth,globstr)})
+                            
 # Computer 406
-pth = 'K:/data/SimpleRT/406'
-vetsaidUC406 = pd.Series(get_sublist(pth,globstr), name='vetsaid')
+pth = 'K:/data/ReactionTime/UCSD/406'
+vetsaidUC406 = pd.DataFrame({'vetsaid': get_sublist(pth,globstr), 
+                             'mtime': get_mtime(pth,globstr)})
+                             
+# Find subjects with data on both computers but different dates, this indicates 
+# a miscoded ID. 
+# These files have been manually removed. Only true duplicates should remain.
+# Files have all been combined into one folder so that only unique files exist.
+UCdups = pd.merge(vetsaidUC405, vetsaidUC406, how='inner', 
+                  on='vetsaid', suffixes=['_405','_406'])
+UCdiffdates = UCdups[UCdups.mtime_405 != UCdups.mtime_406]
 
-# Find subjects with data on both computers
-# Duplicate files have been manually removed. This should not 
-# find any duplicates between computers 103 and 104.
-UCdups = list(set(vetsaidUC405).intersection(set(vetsaidUC406)))
-UCdups = pd.Series(UCdups, name='vetsaid')
+# Check that merged UC edat files contain correct IDs (ie., same as filename)
+pth = 'K:/data/ReactionTime/UCSD'
+vetsaidUC = pd.Series(get_sublist(pth,globstr), name='vetsaid')
+mergedUC = pd.read_csv('K:/data/ReactionTime/UCSD/ReactionTime_UCSD_merged.csv')
+mergedUC = pd.Series(mergedUC['SubjectID'].unique(), name='vetsaid')
+
+# Check for ids that are different between filenames and merged edats
+# These have been corrected manually 
+# This code should not find any discrepancies
+diffUC = list(set(vetsaidUC).symmetric_difference(set(mergedUC)))
+
+# Find missing subjects
+missingRT = pd.Series(list(set(vetsaid).difference(set(vetsaidUC))), 
+                         name='vetsaid')
+#missingRT.to_csv('K:/data/ReactionTime/missingReactionTime.csv', index=False)

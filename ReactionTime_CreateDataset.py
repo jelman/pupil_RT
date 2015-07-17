@@ -19,8 +19,8 @@ def filter_RT(df, minRT=75, maxRT=920):
     """ Set trials with an RT below 75ms or above 920ms to 
     missing """
     idx = (df['Stimulus.RT']<75.0)|(df['Stimulus.RT']>920)
-    df.ix[idx,'Stimulus.ACC'] = 0    
-    df.ix[idx,'Stimulus.RESP'] = np.nan   
+    df.loc[idx,'Stimulus.ACC'] = 0    
+    df.loc[idx,'Stimulus.RESP'] = np.nan   
     return df
     
 def apply_filters(df):
@@ -85,15 +85,24 @@ def calc_trial_scores(trialdf):
     misses =  calc_misses(trialdf)
     NR = calc_NR(trialdf)
     meanRT = calc_meanRT(trialdf)
+    medianRT = calc_medianRT(trialdf)
     stdRT = calc_stdRT(trialdf)
     trimmed_meanRT = calc_trimmed_meanRT(trialdf, meanRT, stdRT)
     cvRT = calc_cvRT(meanRT, stdRT)
     summary_scores = pd.Series({'hits': hits, 'misses': misses, 'NR': NR,
                         'meanRT': meanRT, 'trimmed_meanRT': trimmed_meanRT,
-                        'stdRT': stdRT, 'cvRT': cvRT})
+                        'medianRT': medianRT, 'stdRT': stdRT, 'cvRT': cvRT})
     return summary_scores
 
-def calc_subject_scores(subjectdf):
+def calc_subject_scores_sides(subjectdf):
+    """
+    Calculates summary scores for each subject, iterating over trial types. 
+    Input is a dataframe containing all trial types for one subject. 
+    Output contains one row per trial type and one column per summary score.
+    """
+    return subjectdf.groupby(['TrialType','SideOfStimuli']).apply(calc_trial_scores)  
+
+def calc_subject_scores_both(subjectdf):
     """
     Calculates summary scores for each subject, iterating over trial types. 
     Input is a dataframe containing all trial types for one subject. 
@@ -108,12 +117,14 @@ def summarise_subjects(df):
     Output is transformed such that each row is a subject, and each
     column is a combination of trial type and summary score.
     """
-    summarydf = df.groupby('SubjectID').apply(calc_subject_scores)
-    summarydf = summarydf.unstack()
-    summarydf = summarydf.reorder_levels([1,0], axis=1)
-    summarydf.columns = [''.join(col).strip().lower() 
-                            for col in summarydf.columns.values]  
-    return summarydf
+    lrdf = df.groupby('SubjectID').apply(calc_subject_scores_sides)
+    lrdf = lrdf.unstack()
+    lrdf = lrdf.reorder_levels([1,0], axis=1)
+    lrdf.columns = [''.join([col[0][0].lower(),col[1]]).strip() 
+                            for col in lrdf.columns.values]
+    bothdf = df.groupby('SubjectID').apply(calc_subject_scores_both)
+    summed_df = bothdf.merge(lrdf, left_index=True, right_index=True)
+    return summed_df
 
 def calc_hitmiss_rate(hits, misses):
     """ Given the number of hits and misses for a particular trial type, 
@@ -122,11 +133,11 @@ def calc_hitmiss_rate(hits, misses):
     missrate = 1. - hitrate    
     return hitrate, missrate
     
-def get_hitmiss_rate(summed_df, trialtypes=['Simple','Choice']):
+def get_hitmiss_rate(summed_df, trialtypes=['Left','Right']):
     """ Loops over trial types and inserts hit and miss rate for each into 
     the passed dataframe. """
     for trial in trialtypes:
-        trial = trial.lower()
+        trial = trial[0].lower()
         hits = summed_df[''.join([trial,'hits'])]
         misses = summed_df[''.join([trial,'misses'])]
         hitratevarname = ''.join([trial,'hitrate'])

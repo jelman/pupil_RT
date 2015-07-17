@@ -115,23 +115,23 @@ def summarise_subjects(df):
                             for col in summarydf.columns.values]  
     return summarydf
 
-def calc_hitmiss_rt(hits, misses):
+def calc_hitmiss_rate(hits, misses):
     """ Given the number of hits and misses for a particular trial type, 
     calculates the hit rate and miss rate. """
-    hitrt = hits / (hits + misses)
-    missrt = 1. - hitrt    
-    return hitrt, missrt
+    hitrate = hits / (hits + misses)
+    missrate = 1. - hitrate    
+    return hitrate, missrate
     
-def get_hitmiss_rt(summed_df, trialtypes=['Simple','Choice']):
+def get_hitmiss_rate(summed_df, trialtypes=['Simple','Choice']):
     """ Loops over trial types and inserts hit and miss rate for each into 
     the passed dataframe. """
     for trial in trialtypes:
         trial = trial.lower()
         hits = summed_df[''.join([trial,'hits'])]
         misses = summed_df[''.join([trial,'misses'])]
-        hitrtvarname = ''.join([trial,'hitrt'])
-        missrtvarname = ''.join([trial,'missrt'])
-        summed_df[hitrtvarname], summed_df[missrtvarname] = calc_hitmiss_rt(hits,misses)
+        hitratevarname = ''.join([trial,'hitrate'])
+        missratevarname = ''.join([trial,'missrate'])
+        summed_df[hitratevarname], summed_df[missratevarname] = calc_hitmiss_rate(hits,misses)
     return summed_df
 
 def apply_excludes(rt_rates):
@@ -143,7 +143,7 @@ def main(infile, outfile):
     rt_filt = apply_filters(rt_raw)
     rt_filt = set_miss_RT(rt_filt)
     rt_summed = summarise_subjects(rt_filt)
-    rt_rates = get_hitmiss_rt(rt_summed)
+    rt_rates = get_hitmiss_rate(rt_summed)
     rt_clean = apply_excludes(rt_rates)
     rt_clean.to_csv(outfile, index=False)    
     

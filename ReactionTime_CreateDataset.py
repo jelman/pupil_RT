@@ -15,10 +15,13 @@ def filter_trialproc(df):
     block."""
     return df[df['Procedure[Trial]']=='TrialProc']        
 
-def filter_RT(df, minRT=75, maxRT=920):
+def get_maxRT(subjectdf):
+    pass
+
+def filter_RT(df, minRT=150, maxRT=920):
     """ Set trials with an RT below 75ms or above 920ms to 
     missing """
-    idx = (df['Stimulus.RT']<75.0)|(df['Stimulus.RT']>920)
+    idx = (df['Stimulus.RT']<minRT)|(df['Stimulus.RT']>maxRT)
     df.loc[idx,'Stimulus.ACC'] = 0    
     df.loc[idx,'Stimulus.RESP'] = np.nan   
     return df

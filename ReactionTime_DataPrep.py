@@ -73,6 +73,12 @@ mergedUC = pd.Series(mergedUC['SubjectID'].unique(), name='vetsaid')
 # This code should not find any discrepancies
 diffUC = list(set(vetsaidUC).symmetric_difference(set(mergedUC)))
 
+# Find UCSD practice subjects. These should not be included in the main dataset.
+# Practice files have been manually moved to practice subfolder. This should 
+# not find anymore subjects.
+UCpractice = list(set(vetsaidUC).difference(set(vetsaid)))
+UCpractice = pd.Series(UCpractice, name='vetsaid')
+
 # Find missing subjects
 missingRT = pd.Series(list(set(vetsaid).difference(set(vetsaidUC))), 
                          name='vetsaid')

@@ -43,29 +43,15 @@ vetsaid = vetsa2df.vetsaid
 ########################################################
 
 ## Get file listings of UCSD data. 
-# Computer 405
 globstr = '*.txt'
-pth = 'K:/data/ReactionTime/UCSD/405'
-vetsaidUC405 = pd.DataFrame({'vetsaid': get_sublist(pth,globstr), 
-                             'mtime': get_mtime(pth,globstr)})
-                            
-# Computer 406
-pth = 'K:/data/ReactionTime/UCSD/406'
-vetsaidUC406 = pd.DataFrame({'vetsaid': get_sublist(pth,globstr), 
+pth = 'K:/data/ReactionTime/UCSD Reaction Time/UCSD V2T2 (VETSA 2 Follow-up)'
+vetsaidUC = pd.DataFrame({'vetsaid': get_sublist(pth,globstr), 
                              'mtime': get_mtime(pth,globstr)})
                              
-# Find subjects with data on both computers but different dates, this indicates 
-# a miscoded ID. 
-# These files have been manually removed. Only true duplicates should remain.
-# Files have all been combined into one folder so that only unique files exist.
-UCdups = pd.merge(vetsaidUC405, vetsaidUC406, how='inner', 
-                  on='vetsaid', suffixes=['_405','_406'])
-UCdiffdates = UCdups[UCdups.mtime_405 != UCdups.mtime_406]
-
 # Check that merged UC edat files contain correct IDs (ie., same as filename)
-pth = 'K:/data/ReactionTime/UCSD'
+pth = 'K:/data/ReactionTime/UCSD Reaction Time/UCSD V2T2 (VETSA 2 Follow-up)'
 vetsaidUC = pd.Series(get_sublist(pth,globstr), name='vetsaid')
-mergedUC = pd.read_csv('K:/data/ReactionTime/UCSD/ReactionTime_UCSD_merged.csv')
+mergedUC = pd.read_csv('K:/data/ReactionTime/UCSD Reaction Time/UCSD V2T2 (VETSA 2 Follow-up)/ReactionTime_UCSD_merged.csv')
 mergedUC = pd.Series(mergedUC['SubjectID'].unique(), name='vetsaid')
 
 # Check for ids that are different between filenames and merged edats
@@ -80,6 +66,11 @@ UCpractice = list(set(vetsaidUC).difference(set(vetsaid)))
 UCpractice = pd.Series(UCpractice, name='vetsaid')
 
 # Find missing subjects
-missingRT = pd.Series(list(set(vetsaid).difference(set(vetsaidUC))), 
+UCmissingRT = pd.Series(list(set(vetsaid).difference(set(vetsaidUC))), 
                          name='vetsaid')
-#missingRT.to_csv('K:/data/ReactionTime/missingReactionTime.csv', index=False)
+UCmissingRT.to_csv('K:/data/ReactionTime/missingReactionTime_UCSD.csv', index=False)
+
+########################################################
+# Find duplicate and practice subjects in BU dataset   #
+# before re-generating and merging edat files.         #
+########################################################

@@ -65,12 +65,62 @@ diffUC = list(set(vetsaidUC).symmetric_difference(set(mergedUC)))
 UCpractice = list(set(vetsaidUC).difference(set(vetsaid)))
 UCpractice = pd.Series(UCpractice, name='vetsaid')
 
-# Find missing subjects
-UCmissingRT = pd.Series(list(set(vetsaid).difference(set(vetsaidUC))), 
-                         name='vetsaid')
-UCmissingRT.to_csv('K:/data/ReactionTime/missingReactionTime_UCSD.csv', index=False)
 
 ########################################################
 # Find duplicate and practice subjects in BU dataset   #
 # before re-generating and merging edat files.         #
 ########################################################
+
+## Get file listings of BU data. 
+# Computer 103
+globstr = '*.txt'
+pth = 'K:/data/ReactionTime/BU Reaction Time/Reaction Time 103'
+vetsaidBU103 = pd.DataFrame({'vetsaid': get_sublist(pth,globstr), 
+                             'mtime': get_mtime(pth,globstr)})
+                            
+# Computer 104
+pth = 'K:/data/ReactionTime/BU Reaction Time/Reaction Time 104'
+vetsaidBU104 = pd.DataFrame({'vetsaid': get_sublist(pth,globstr), 
+                             'mtime': get_mtime(pth,globstr)})
+                             
+# Find subjects with data on both computers but different dates, this indicates 
+# a miscoded ID. 
+# These files have been manually removed. Only true duplicates should remain.
+# Files have all been combined into one folder so that only unique files exist.
+BUdups = pd.merge(vetsaidBU103, vetsaidBU104, how='inner', 
+                  on='vetsaid', suffixes=['_103','_104'])
+BUdiffdates = BUdups[BUdups.mtime_103 != BUdups.mtime_104]
+
+## Check that merged BU edat files contain correct IDs (ie., same as filename)
+# Computer 103
+mergedBU103 = pd.read_csv('K:/data/ReactionTime/BU Reaction Time/Reaction Time 103/ReactionTime_BU103_merged.csv')
+mergedBU103 = pd.Series(mergedBU103['SubjectID'].unique(), name='vetsaid')
+mergedBU104 = pd.read_csv('K:/data/ReactionTime/BU Reaction Time/Reaction Time 104/ReactionTime_BU104_merged.csv')
+mergedBU104 = pd.Series(mergedBU104['SubjectID'].unique(), name='vetsaid')
+# Check for ids that are different between filenames and merged edats
+# These have been corrected manually 
+# This code should not find any discrepancies
+diffBU103 = list(set(vetsaidBU103.vetsaid).symmetric_difference(set(mergedBU103)))
+diffBU104 = list(set(vetsaidBU104.vetsaid).symmetric_difference(set(mergedBU104)))
+
+# Find BU practice subjects. These should not be included in the main dataset.
+# Practice files have been manually moved to practice subfolder. This should 
+# not find anymore subjects.
+BUpractice103 = list(set(vetsaidBU103.vetsaid).difference(set(vetsaid)))
+BUpractice103 = pd.Series(BUpractice103, name='vetsaid')
+BUpractice104 = list(set(vetsaidBU104.vetsaid).difference(set(vetsaid)))
+BUpractice104 = pd.Series(BUpractice104, name='vetsaid')
+
+# Find duplicates between UC and BU
+# Any duplicates should have been manually removed. This should not find
+# any subjects.
+vetsaidBU = pd.concat([mergedBU103, mergedBU104], ignore_index=True)
+list(set(vetsaidUC).intersection(set(vetsaidBU)))
+
+# Find subjects missing reaction time data
+vetsaidRT = pd.read_csv('K:/data/ReactionTime/ReactionTime_merged.csv')
+vetsaidRT = vetsaidRT['SubjectID']
+missingRT = pd.Series(list(set(vetsaid).difference(set(vetsaidRT))), 
+                         name='vetsaid')
+missingRT.to_csv('K:/data/ReactionTime/missingReactionTime.csv', index=False)
+

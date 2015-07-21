@@ -148,6 +148,14 @@ def get_hitmiss_rate(summed_df, trialtypes=[' ','Left','Right']):
         summed_df[hitratevarname], summed_df[missratevarname] = calc_hitmiss_rate(hits,misses)
     return summed_df
 
+def transform_scores(df, varnames=['mean','std']):
+    pattern = '|'.join(varnames)
+    varlist = df.columns[df.columns.str.contains(pattern).tolist()].tolist()
+    for var in varlist:
+        df['_'.join(['log',var])] = np.log(df[var])
+    return df
+    
+    
 def apply_excludes(rt_rates):
     """ Placeholder function. """
     return rt_rates
@@ -158,8 +166,9 @@ def main(infile, outfile):
     rt_filt = set_miss_RT(rt_filt)
     rt_summed = summarise_subjects(rt_filt)
     rt_rates = get_hitmiss_rate(rt_summed)
-    rt_clean = apply_excludes(rt_rates)
-    rt_clean.to_csv(outfile, index=False)    
+    rt_trans = transform_scores(rt_rates)
+    rt_clean = apply_excludes(rt_trans)
+    rt_clean.to_csv(outfile, index=True)    
     
 ##############################################################
 ############## Set paths and parameters ######################

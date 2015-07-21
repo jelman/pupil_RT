@@ -15,20 +15,20 @@ def filter_trialproc(df):
     block."""
     return df[df['Procedure[Trial]']=='TrialProc']        
 
-def get_maxRT(subjectdf):
-    pass
-
 def filter_RT(df, minRT=150, maxRT=920):
-    """ Set trials with an RT below 75ms or above 920ms to 
-    missing """
-    idx = (df['Stimulus.RT']<minRT)|(df['Stimulus.RT']>maxRT)
+    """ Set trials with an RT below 150ms or exceeding 3 SD's from the mean 
+    within each subject and trial type to missing. """
+    filtMaxRT = lambda x: x < (x.mean() + (3*x.std()))
+    maxRT = df.groupby(['SubjectID','TrialType'])['Stimulus.RT'].apply(filtMaxRT)
+    idx = (df['Stimulus.RT']<minRT) | ~maxRT
     df.loc[idx,'Stimulus.ACC'] = 0    
     df.loc[idx,'Stimulus.RESP'] = np.nan   
     return df
     
 def apply_filters(df):
-    df = filter_trialproc(df)
-    return df
+    filt_df = filter_trialproc(df)
+    filt_df = filter_RT(filt_df)
+    return filt_df
     
 def set_miss_RT(df):
     """ Set any trial with inaccurate response to a missing RT. """    
@@ -63,7 +63,7 @@ def calc_stdRT(trialdf):
     """ Calculate standard deviation of RT for correct trials. """
     return trialdf.ix[trialdf['Stimulus.ACC']==1,'Stimulus.RT'].std()    
 
-def calc_trimmed_meanRT(trialdf, meanRT, stdRT):
+def calc_trim_meanRT(trialdf, meanRT, stdRT):
     """ Calculate trimmed mean of RT for correct trials. Excludes any 
     trials that fall outside of 3 standard deviations of the mean. """
     idx = ((trialdf['Stimulus.ACC']==1) &
@@ -90,10 +90,10 @@ def calc_trial_scores(trialdf):
     meanRT = calc_meanRT(trialdf)
     medianRT = calc_medianRT(trialdf)
     stdRT = calc_stdRT(trialdf)
-    trimmed_meanRT = calc_trimmed_meanRT(trialdf, meanRT, stdRT)
+    trim_meanRT = calc_trim_meanRT(trialdf, meanRT, stdRT)
     cvRT = calc_cvRT(meanRT, stdRT)
     summary_scores = pd.Series({'hits': hits, 'misses': misses, 'NR': NR,
-                        'meanRT': meanRT, 'trimmed_meanRT': trimmed_meanRT,
+                        'meanRT': meanRT, 'trim_meanRT': trim_meanRT,
                         'medianRT': medianRT, 'stdRT': stdRT, 'cvRT': cvRT})
     return summary_scores
 
@@ -136,11 +136,11 @@ def calc_hitmiss_rate(hits, misses):
     missrate = 1. - hitrate    
     return hitrate, missrate
     
-def get_hitmiss_rate(summed_df, trialtypes=['Left','Right']):
+def get_hitmiss_rate(summed_df, trialtypes=[' ','Left','Right']):
     """ Loops over trial types and inserts hit and miss rate for each into 
     the passed dataframe. """
     for trial in trialtypes:
-        trial = trial[0].lower()
+        trial = trial[0].lower().strip()
         hits = summed_df[''.join([trial,'hits'])]
         misses = summed_df[''.join([trial,'misses'])]
         hitratevarname = ''.join([trial,'hitrate'])
@@ -164,10 +164,10 @@ def main(infile, outfile):
 ##############################################################
 ############## Set paths and parameters ######################
 ##############################################################
-datapath = 'K:/data/ReactionTime/UCSD' # Specify data path of RT data
-fname = 'ReactionTime_UCSD_merged.csv' # Name of input data file
+datapath = 'K:/data/ReactionTime' # Specify data path of RT data
+fname = 'ReactionTime_merged.csv' # Name of input data file
 infile = os.path.join(datapath,fname) # Input file
-outname = 'ReactionTime_UCSD_processed.csv' # Name of file to save out
+outname = 'ReactionTime_processed.csv' # Name of file to save out
 outfile = os.path.join(datapath, outname) # Output file
 ##############################################################
 

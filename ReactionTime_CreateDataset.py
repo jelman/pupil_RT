@@ -15,25 +15,35 @@ def filter_trialproc(df):
     block."""
     return df[df['Procedure[Trial]']=='TrialProc']        
 
-def filter_RT(df, minRT=150, maxRT=920):
-    """ Set trials with an RT below 150ms or exceeding 3 SD's from the mean 
-    within each subject and trial type to missing. """
-    filtMaxRT = lambda x: x < (x.mean() + (3*x.std()))
-    maxRT = df.groupby(['SubjectID','TrialType'])['Stimulus.RT'].apply(filtMaxRT)
-    idx = (df['Stimulus.RT']<minRT) | ~maxRT
-    df.loc[idx,'Stimulus.ACC'] = 0    
-    df.loc[idx,'Stimulus.RESP'] = np.nan   
-    return df
-    
-def apply_filters(df):
-    filt_df = filter_trialproc(df)
-    filt_df = filter_RT(filt_df)
-    return filt_df
-    
 def set_miss_RT(df):
     """ Set any trial with inaccurate response to a missing RT. """    
     df.loc[df['Stimulus.ACC']==0,'Stimulus.RT'] = np.nan 
     return df
+
+def filter_minRT(df, minRT=150):
+    """ Set any trial with RT less than the minimum cut-off to missing."""
+    minRTmask = df['Stimulus.RT']<minRT
+    df.loc[minRTmask,'Stimulus.ACC'] = 0
+    df.loc[minRTmask,'Stimulus.RT'] = np.nan 
+    return df
+    
+def filter_maxRT(df):
+    """ Set trials with an RT exceeding 3 SD's from the mean 
+    within each subject and trial type to missing. """
+    filtMaxRT = lambda x: x > (x.mean() + (3*x.std()))
+    maxRTmask = df.groupby(['SubjectID','TrialType'])['Stimulus.RT'].apply(filtMaxRT)
+    df.loc[maxRTmask,'Stimulus.ACC'] = 0    
+    df.loc[maxRTmask,'Stimulus.RESP'] = np.nan   
+    return df
+    
+def apply_filters(df):
+    filt_df = filter_trialproc(df)
+    filt_df = set_miss_RT(df)
+    filt_df = filter_minRT(filt_df)
+    filt_df = filter_maxRT(filt_df)
+    return filt_df
+    
+
 
 def calc_hits(trialdf):
     """ Calculate hits (correct responses) """
@@ -154,8 +164,7 @@ def transform_scores(df, varnames=['mean','std']):
     for var in varlist:
         df['_'.join(['log',var])] = np.log(df[var])
     return df
-    
-    
+        
 def apply_excludes(rt_rates):
     """ Placeholder function. """
     return rt_rates
@@ -163,12 +172,12 @@ def apply_excludes(rt_rates):
 def main(infile, outfile):
     rt_raw = pd.read_csv(infile, sep=',')
     rt_filt = apply_filters(rt_raw)
-    rt_filt = set_miss_RT(rt_filt)
     rt_summed = summarise_subjects(rt_filt)
     rt_rates = get_hitmiss_rate(rt_summed)
     rt_trans = transform_scores(rt_rates)
     rt_clean = apply_excludes(rt_trans)
     rt_clean.to_csv(outfile, index=True)    
+    
     
 ##############################################################
 ############## Set paths and parameters ######################

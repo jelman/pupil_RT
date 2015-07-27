@@ -38,12 +38,10 @@ def filter_maxRT(df):
     
 def apply_filters(df):
     filt_df = filter_trialproc(df)
-    filt_df = set_miss_RT(df)
+    filt_df = set_miss_RT(filt_df)
     filt_df = filter_minRT(filt_df)
     filt_df = filter_maxRT(filt_df)
     return filt_df
-    
-
 
 def calc_hits(trialdf):
     """ Calculate hits (correct responses) """
@@ -102,9 +100,11 @@ def calc_trial_scores(trialdf):
     stdRT = calc_stdRT(trialdf)
     trim_meanRT = calc_trim_meanRT(trialdf, meanRT, stdRT)
     cvRT = calc_cvRT(meanRT, stdRT)
+    ntrials = len(trialdf)
     summary_scores = pd.Series({'hits': hits, 'misses': misses, 'NR': NR,
                         'meanRT': meanRT, 'trim_meanRT': trim_meanRT,
-                        'medianRT': medianRT, 'stdRT': stdRT, 'cvRT': cvRT})
+                        'medianRT': medianRT, 'stdRT': stdRT, 'cvRT': cvRT, 
+                        'ntrials':ntrials})
     return summary_scores
 
 def calc_subject_scores_sides(subjectdf):
@@ -158,16 +158,19 @@ def get_hitmiss_rate(summed_df, trialtypes=[' ','Left','Right']):
         summed_df[hitratevarname], summed_df[missratevarname] = calc_hitmiss_rate(hits,misses)
     return summed_df
 
-def transform_scores(df, varnames=['mean','std']):
+def transform_scores(df, varnames=['mean','std','cv']):
     pattern = '|'.join(varnames)
     varlist = df.columns[df.columns.str.contains(pattern).tolist()].tolist()
     for var in varlist:
         df['_'.join(['log',var])] = np.log(df[var])
     return df
         
-def apply_excludes(rt_rates):
+def apply_excludes(df):
     """ Placeholder function. """
-    return rt_rates
+    exclude_idx =  ((df['lntrials']<8) |
+                    (df['rntrials']<8) |
+                    (df['ntrials']<16))
+    return df.ix[~exclude_idx]
     
 def main(infile, outfile):
     rt_raw = pd.read_csv(infile, sep=',')

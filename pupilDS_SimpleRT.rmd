@@ -1,0 +1,32 @@
+---
+title: "Pupillometry and Simple Reaction Time"
+author: "Jeremy Elman"
+date: "July 27, 2015"
+output: html_document
+---
+
+Load libraries
+```{r results='hide', message=FALSE, warning=FALSE}
+library(ggplot2)
+library(gridExtra)
+library(gtools)
+library(lme4)
+library(arm)
+library(lmerTest)
+library(dplyr)
+library(magrittr)
+library(sjPlot)
+library(sjmisc)
+library(multcomp)
+source("K:/code/summarySE.R")
+source("K:/code/normDataWithin.R")
+source("K:/code/summarySEwithin.R")
+```
+
+Load data.
+```{r}
+pupilSimpleRT = read.csv("K:/ReactionTime/data/pupil_simpleRT.csv", 
+                         stringsAsFactors = FALSE)
+pupilSimpleRT = pupilSimpleRT[!is.na(pupilSimpleRT$PCA),]
+str(pupilSimpleRT)
+```

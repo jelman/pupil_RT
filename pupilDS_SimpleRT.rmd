@@ -114,14 +114,17 @@ pupilSimpleRT = left_join(pupilSimpleRT, c.subjDF, by="vetsaid")
 pupilSimpleRT %<>%
   group_by(vetsaid) %>%
   dplyr::summarise(log_meanRT = mean(log_meanRT),
+                   log_medianRT = mean(log_medianRT),
                    log_stdRT = mean(log_stdRT),
                    log_cvRT = mean(log_cvRT),
                    log_trim_meanRT = mean(log_trim_meanRT)) %>%
   mutate(q.log.meanRT = quantcut(log_meanRT, labels=seq(1,4)),
+         q.log.medianRT = quantcut(log_medianRT, labels=seq(1,4)),
          q.log.stdRT = quantcut(log_stdRT, labels=seq(1,4)),
          q.log.cvRT = quantcut(log_cvRT, labels=seq(1,4)),
          q.log.trim_meanRT = quantcut(log_trim_meanRT, labels=seq(1,4))) %>%
-  dplyr::select(vetsaid,q.log.meanRT,q.log.stdRT,q.log.cvRT,q.log.trim_meanRT) %>%
+  dplyr::select(vetsaid,q.log.meanRT,q.log.medianRT,q.log.stdRT,
+                q.log.cvRT,q.log.trim_meanRT) %>%
   inner_join(pupilSimpleRT, by="vetsaid")
 
 # Create residPCA by regressing BaselineDiameter from PCA and taking the residuals.
@@ -156,7 +159,7 @@ ggsave("K:/ReactionTime/results/PCAxLoad.pdf", pcaGrob)
 ```{r}
 rtSubset = pupilSimpleRT %>%
   filter(Load==3) %>%
-  dplyr::select(log_meanRT, log_trim_meanRT, log_stdRT, log_cvRT)
+  dplyr::select(log_meanRT, log_medianRT, log_stdRT, log_cvRT)
 
 plot_list = list()
 for (i in 1:4) {
@@ -187,18 +190,18 @@ summary(glht(lme.facLoad.log_meanRT, contrasts.facLoad.log_meanRT),
               test = adjusted("none"))
 ```
 
-Run basic model testing interaction of Load with log trimmed mean RT
+Run basic model testing interaction of Load with log median RT
 ```{r}
-contrasts.facLoad.log_trim_meanRT = rbind(
-    'Load3:log_trim_meanRT vs Load6:log_trim_meanRT' = c(0,0,0,0,0,0,0,0,0,0,0,1,0),
-    'Load6:log_trim_meanRT vs Load9:log_trim_meanRT' = c(0,0,0,0,0,0,0,0,0,0,0,-1,1),
-    'Load3:log_trim_meanRT vs Load9:log_trim_meanRT' = c(0,0,0,0,0,0,0,0,0,0,0,0,1)
+contrasts.facLoad.log_medianRT = rbind(
+    'Load3:log_medianRT vs Load6:log_medianRT' = c(0,0,0,0,0,0,0,0,0,0,0,1,0),
+    'Load6:log_medianRT vs Load9:log_medianRT' = c(0,0,0,0,0,0,0,0,0,0,0,-1,1),
+    'Load3:log_medianRT vs Load9:log_medianRT' = c(0,0,0,0,0,0,0,0,0,0,0,0,1)
 )
-lme.facLoad.log_trim_meanRT = lmer(residPCA ~ facLoad*log_trim_meanRT + apoe4 +
-                                     c.age_v2 + site_v2rev + Device + acamedbin + 
-                                     (1 | case/vetsaid), data=pupilSimpleRT)
-summary(lme.facLoad.log_trim_meanRT)
-summary(glht(lme.facLoad.log_trim_meanRT, contrasts.facLoad.log_trim_meanRT), 
+lme.facLoad.log_medianRT = lmer(residPCA ~ facLoad*log_medianRT + apoe4 + 
+                                  c.age_v2 + site_v2rev + Device + acamedbin + 
+                                  (1 | case/vetsaid), data=pupilSimpleRT)
+summary(lme.facLoad.log_medianRT)
+summary(glht(lme.facLoad.log_medianRT, contrasts.facLoad.log_medianRT), 
               test = adjusted("none"))
 ```
 
@@ -232,18 +235,9 @@ summary(glht(lme.facLoad.log_cvRT, contrasts.facLoad.log_cvRT),
               test = adjusted("none"))
 ```
 
-```{r}
-contrasts.facLoad.log_medianRT = rbind(
-    'Load3:log_medianRT vs Load6:log_medianRT' = c(0,0,0,0,0,0,0,0,0,0,0,1,0),
-    'Load6:log_medianRT vs Load9:log_medianRT' = c(0,0,0,0,0,0,0,0,0,0,0,-1,1),
-    'Load3:log_medianRT vs Load9:log_medianRT' = c(0,0,0,0,0,0,0,0,0,0,0,0,1)
-)
-lme.facLoad.log_medianRT = lmer(residPCA ~ facLoad*log_medianRT + apoe4 + 
-                                  c.age_v2 + site_v2rev + Device + acamedbin + 
-                                  (1 | case/vetsaid), data=pupilSimpleRT)
-summary(lme.facLoad.log_medianRT)
-summary(glht(lme.facLoad.log_medianRT, contrasts.facLoad.log_medianRT), 
-              test = adjusted("none"))
+Save out analysis dataset
+```{r, include=FALSE}
+write.csv(pupilSimpleRT, "K:/ReactionTime/data/pupilDS_SimpleRT_AnalysisDataset.csv")
 ```
 
 ```{r}

@@ -35,6 +35,119 @@ pupilSimpleRT = pupilSimpleRT[!is.na(pupilSimpleRT$PCA),]
 str(pupilSimpleRT)
 ```
 
+How many subjects?
+```{r}
+n_distinct(pupilSimpleRT$vetsaid)
+```
+
+How many attrition replacements?
+```{r}
+pupilSimpleRT %>% 
+  group_by(vetsaid) %>% 
+  dplyr::summarise(AR = first(vetsa2)) %>%
+  group_by(AR) %>%
+  dplyr::summarise(n=n())
+```
+
+How many twin pairs vs unpaired twins? 
+```{r}
+pupilSimpleRT %>%
+  group_by(case) %>%
+  dplyr::summarise(n_twins = n_distinct(vetsaid)) %>%
+  group_by(n_twins) %>%
+  dplyr::summarise(n=n())
+```
+
+
+How many MZ and DZ pairs? (excludes unpaired subjects)
+```{r}
+pupilSimpleRT %>% 
+  group_by(case) %>%
+  mutate(n_twins = n_distinct(vetsaid)) %>%
+  filter(n_twins > 1) %>%
+  dplyr::summarise(zyg = mean(zyg14)) %>%
+  group_by(zyg) %>%
+  dplyr::count(zyg)
+```
+
+How many levels of load did subjects complete? Shows number of subjects who completed 1, 2, or 3 levels (corresponding to digit spans of 3, 6, and 9).
+```{r}
+pupilSimpleRT %>%
+  group_by(vetsaid) %>%
+  dplyr::summarise(load = n()) %>%
+  dplyr::count(load)
+```
+
+Recode two-level factors to 0/1. Center continuous data.
+*TRANSFORM*
+```{r}
+# Create factors
+pupilSimpleRT$facLoad = factor(pupilSimpleRT$Load)
+contr.backward.diff = matrix(c(-2/3, 1/3, 1/3,-1/3,-1/3,2/3), ncol = 2)
+contrasts(pupilSimpleRT$facLoad) = contr.backward.diff
+pupilSimpleRT$MZ = ifelse(pupilSimpleRT$zyg14==1, 1, 0)
+pupilSimpleRT$site_v2rev = ifelse(pupilSimpleRT$site_v2rev==1, 1, 0)
+pupilSimpleRT$Device = factor(pupilSimpleRT$LR_Device)
+pupilSimpleRT$acamedbin = ifelse(pupilSimpleRT$acamedtot==0, 0, 1)
+
+# Center continuous variables to interpret intercept at mean value (rather than 0).
+# Subject specific variables centered at subject level, trial specific variables centered at trial level.
+contTrialVars = c("PCA","pctPCA","adjPCA")
+contSubjVars = c("age_v2","afqtpcttran_v2","DSFMAX_v2")
+
+# Center trial specific variables
+for (x in contTrialVars) {
+  newcol = paste0('c.',x)
+  pupilSimpleRT[[newcol]] = as.numeric(scale(pupilSimpleRT[[x]], center=TRUE, scale=FALSE))
+}
+
+# Center subject specific variables
+subjDF = pupilSimpleRT[c("vetsaid",contSubjVars)]
+subjDF %<>% group_by(vetsaid) %>% dplyr::summarise_each(funs(mean))
+nums <- sapply(subjDF, is.numeric)
+c.subjDF = as.data.frame(apply(subjDF[,nums],2, function(y) y - mean(y, na.rm=TRUE)))
+names(c.subjDF) = paste0("c.",names(c.subjDF))
+c.subjDF$vetsaid = subjDF$vetsaid
+pupilSimpleRT = left_join(pupilSimpleRT, c.subjDF, by="vetsaid")
+
+# Create quantile groups of log CRP
+pupilSimpleRT %<>%
+  group_by(vetsaid) %>%
+  dplyr::summarise(mean = mean(log.CRP_v2)) %>%
+  mutate(q.log.CRP_v2 = quantcut(mean, labels=seq(1,4))) %>%
+  dplyr::select(vetsaid, q.log.CRP_v2) %>%
+  inner_join(pupilSimpleRT, by="vetsaid")
+
+# Create residPCA by regressing BaselineDiameter from PCA and taking the residuals.
+lme.PCA.resid = lmer(PCA ~ BaselineDiameter + (1 | case/vetsaid), data=pupilSimpleRT)
+pupilSimpleRT$residPCA = resid(lme.PCA.resid)
+```
+
+
+Plot pctPCA and residPCA data to check for ceiling effects on pupil dilation
+```{r}
+pctPcaPlot = ggplot(pupilSimpleRT, aes(x=pctPCA)) + 
+  geom_histogram(fill="steel blue",color="gray") + 
+  facet_wrap(~ Load, nrow=3) + 
+  ggtitle("Histogram of pctPCA by Load") + 
+  xlab("% PCA") + theme_bw() 
+
+residPcaPlot = ggplot(pupilSimpleRT, aes(x=residPCA)) + 
+  geom_histogram(fill="steel blue",color="gray") + 
+  facet_wrap(~ Load, nrow=3) + 
+  ggtitle("Histogram of residPCA by Load") + 
+  xlab("PCA (adjusted for baseline)") + theme_bw() 
+
+grid.arrange(pctPcaPlot, residPcaPlot, ncol=2)
+```
+
+```{r, include=FALSE}
+# Save out figure
+pcaGrob = arrangeGrob(pctPcaPlot, residPcaPlot, ncol=2)
+ggsave("K:/ReactionTime/results/PCAxLoad.pdf", pcaGrob)
+```
+
+
 ```{r}
 print(sessionInfo(), locale = FALSE)
 ```

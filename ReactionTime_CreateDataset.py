@@ -158,7 +158,7 @@ def get_hitmiss_rate(summed_df, trialtypes=[' ','Left','Right']):
         summed_df[hitratevarname], summed_df[missratevarname] = calc_hitmiss_rate(hits,misses)
     return summed_df
 
-def transform_scores(df, varnames=['mean','std','cv']):
+def transform_scores(df, varnames=['mean','std','cv','median']):
     pattern = '|'.join(varnames)
     varlist = df.columns[df.columns.str.contains(pattern).tolist()].tolist()
     for var in varlist:

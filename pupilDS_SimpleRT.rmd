@@ -31,7 +31,8 @@ Load data.
 ```{r}
 pupilSimpleRT = read.csv("K:/ReactionTime/data/pupil_simpleRT.csv", 
                          stringsAsFactors = FALSE)
-pupilSimpleRT = pupilSimpleRT[!is.na(pupilSimpleRT$PCA),]
+pupilSimpleRT = pupilSimpleRT[!is.na(pupilSimpleRT$PCA) &
+                              !is.na(pupilSimpleRT$meanRT),]
 str(pupilSimpleRT)
 ```
 
@@ -118,13 +119,13 @@ pupilSimpleRT %<>%
                    log_stdRT = mean(log_stdRT),
                    log_cvRT = mean(log_cvRT),
                    log_trim_meanRT = mean(log_trim_meanRT)) %>%
-  mutate(q.log.meanRT = quantcut(log_meanRT, labels=seq(1,4)),
-         q.log.medianRT = quantcut(log_medianRT, labels=seq(1,4)),
-         q.log.stdRT = quantcut(log_stdRT, labels=seq(1,4)),
-         q.log.cvRT = quantcut(log_cvRT, labels=seq(1,4)),
-         q.log.trim_meanRT = quantcut(log_trim_meanRT, labels=seq(1,4))) %>%
-  dplyr::select(vetsaid,q.log.meanRT,q.log.medianRT,q.log.stdRT,
-                q.log.cvRT,q.log.trim_meanRT) %>%
+  mutate(q.log_meanRT = quantcut(log_meanRT, labels=seq(1,4)),
+         q.log_medianRT = quantcut(log_medianRT, labels=seq(1,4)),
+         q.log_stdRT = quantcut(log_stdRT, labels=seq(1,4)),
+         q.log_cvRT = quantcut(log_cvRT, labels=seq(1,4)),
+         q.log_trim_meanRT = quantcut(log_trim_meanRT, labels=seq(1,4))) %>%
+  dplyr::select(vetsaid,q.log_meanRT,q.log_medianRT,q.log_stdRT,
+                q.log_cvRT,q.log_trim_meanRT) %>%
   inner_join(pupilSimpleRT, by="vetsaid")
 
 # Create residPCA by regressing BaselineDiameter from PCA and taking the residuals.
@@ -156,6 +157,7 @@ pcaGrob = arrangeGrob(pctPcaPlot, residPcaPlot, ncol=2)
 ggsave("K:/ReactionTime/results/PCAxLoad.pdf", pcaGrob)
 ```
 
+Plot histograms of RT measures
 ```{r}
 rtSubset = pupilSimpleRT %>%
   filter(Load==3) %>%
@@ -173,6 +175,35 @@ do.call(grid.arrange, c(plot_list, list(ncol=2)))
 ```{r, include=FALSE}
 g = do.call(arrangeGrob,  c(plot_list, list(ncol=2)))
 ggsave("K:/ReactionTime/results/rtHists.pdf", g)
+```
+
+Plot pupil dilation of all RT measure quantile groups
+```{r}
+rtMeasures = c("log_meanRT","log_medianRT","log_stdRT","log_cvRT")
+measureList = list()
+for (measure in rtMeasures){
+  measureList[[measure]] = summarySEwithin(pupilSimpleRT, 
+                measurevar="residPCA", 
+                idvar="vetsaid", 
+                withinvars="Load", 
+                betweenvars=paste0("q.",measure),
+                na.rm=TRUE)
+}
+
+summaryResidPCA.logCRP = summarySEwithin(pupilInf.lt10, 
+                measurevar="residPCA", 
+                idvar="vetsaid", 
+                withinvars="Load", 
+                betweenvars="q.log.CRP_v2",
+                na.rm=TRUE)
+  
+ggplot(summaryResidPCA.logCRP, aes(x=Load,y=residPCA, 
+                                   color=q.log.CRP_v2, group=q.log.CRP_v2)) +
+      geom_line() +
+      geom_errorbar(width=.1, aes(ymin=residPCA-ci,ymax=residPCA+ci)) +
+      ggtitle("Pupil dilation by CRP quantile") + theme_bw() +
+      ylab("Change in Pupil Diameter\n(Adjusted for Baseline)") +
+      scale_color_discrete(name="log CRP\nquantile")
 ```
 
 Run basic model testing interaction of Load with log mean RT

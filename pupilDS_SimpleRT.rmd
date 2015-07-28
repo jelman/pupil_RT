@@ -1,9 +1,13 @@
 ---
 title: "Pupillometry and Simple Reaction Time"
 author: "Jeremy Elman"
-date: "July 27, 2015"
+date: "`r Sys.Date()`"
 output: html_document
 ---
+
+```{r global_options, include=FALSE}
+knitr::opts_chunk$set(warning=FALSE, message=FALSE)
+```
 
 Load libraries
 ```{r results='hide', message=FALSE, warning=FALSE}
@@ -29,4 +33,8 @@ pupilSimpleRT = read.csv("K:/ReactionTime/data/pupil_simpleRT.csv",
                          stringsAsFactors = FALSE)
 pupilSimpleRT = pupilSimpleRT[!is.na(pupilSimpleRT$PCA),]
 str(pupilSimpleRT)
+```
+
+```{r}
+print(sessionInfo(), locale = FALSE)
 ```

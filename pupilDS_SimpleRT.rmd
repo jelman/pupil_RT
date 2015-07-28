@@ -113,16 +113,22 @@ pupilSimpleRT = left_join(pupilSimpleRT, c.subjDF, by="vetsaid")
 # Create quantile groups of log CRP
 pupilSimpleRT %<>%
   group_by(vetsaid) %>%
-  dplyr::summarise(mean = mean(log.CRP_v2)) %>%
-  mutate(q.log.CRP_v2 = quantcut(mean, labels=seq(1,4))) %>%
-  dplyr::select(vetsaid, q.log.CRP_v2) %>%
+  dplyr::summarise(log_meanRT = mean(log_meanRT),
+                   log_stdRT = mean(log_stdRT),
+                   log_cvRT = mean(log_cvRT),
+                   log_trim_meanRT = mean(log_trim_meanRT)) %>%
+  mutate(q.log.meanRT = quantcut(log_meanRT, labels=seq(1,4)),
+         q.log.stdRT = quantcut(log_stdRT, labels=seq(1,4)),
+         q.log.cvRT = quantcut(log_cvRT, labels=seq(1,4)),
+         q.log.trim_meanRT = quantcut(log_trim_meanRT, labels=seq(1,4))) %>%
+  dplyr::select(vetsaid,q.log.meanRT,q.log.stdRT,q.log.cvRT,q.log.trim_meanRT) %>%
   inner_join(pupilSimpleRT, by="vetsaid")
 
 # Create residPCA by regressing BaselineDiameter from PCA and taking the residuals.
-lme.PCA.resid = lmer(PCA ~ BaselineDiameter + (1 | case/vetsaid), data=pupilSimpleRT)
+lme.PCA.resid = lmer(PCA ~ BaselineDiameter + (1 | case/vetsaid),
+                     data=pupilSimpleRT)
 pupilSimpleRT$residPCA = resid(lme.PCA.resid)
 ```
-
 
 Plot pctPCA and residPCA data to check for ceiling effects on pupil dilation
 ```{r}
@@ -145,6 +151,25 @@ grid.arrange(pctPcaPlot, residPcaPlot, ncol=2)
 # Save out figure
 pcaGrob = arrangeGrob(pctPcaPlot, residPcaPlot, ncol=2)
 ggsave("K:/ReactionTime/results/PCAxLoad.pdf", pcaGrob)
+```
+
+```{r}
+rtSubset = pupilSimpleRT %>%
+  filter(Load==3) %>%
+  dplyr::select(log_meanRT, log_trim_meanRT, log_stdRT, log_cvRT)
+
+plot_list = list()
+for (i in 1:4) {
+  p = ggplot(rtSubset,aes_string(x = rtSubset[i])) +
+        geom_histogram(fill="steelblue",color="gray") + xlab(names(rtSubset[i]))
+  plot_list[[i]] = p
+}
+do.call(grid.arrange, c(plot_list, list(ncol=2)))
+```
+
+```{r, include=FALSE}
+g = do.call(arrangeGrob,  c(plot_list, list(ncol=2)))
+ggsave("K:/ReactionTime/results/rtHists.pdf", g)
 ```
 
 

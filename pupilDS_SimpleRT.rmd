@@ -172,6 +172,79 @@ g = do.call(arrangeGrob,  c(plot_list, list(ncol=2)))
 ggsave("K:/ReactionTime/results/rtHists.pdf", g)
 ```
 
+Run basic model testing interaction of Load with log mean RT
+```{r}
+contrasts.facLoad.log_meanRT = rbind(
+    'Load3:log_meanRT vs Load6:log_meanRT' = c(0,0,0,0,0,0,0,0,0,0,0,1,0),
+    'Load6:log_meanRT vs Load9:log_meanRT' = c(0,0,0,0,0,0,0,0,0,0,0,-1,1),
+    'Load3:log_meanRT vs Load9:log_meanRT' = c(0,0,0,0,0,0,0,0,0,0,0,0,1)
+)
+lme.facLoad.log_meanRT = lmer(residPCA ~ facLoad*log_meanRT + apoe4 + c.age_v2 + 
+                            site_v2rev + Device + acamedbin + (1 | case/vetsaid), 
+                          data=pupilSimpleRT)
+summary(lme.facLoad.log_meanRT)
+summary(glht(lme.facLoad.log_meanRT, contrasts.facLoad.log_meanRT), 
+              test = adjusted("none"))
+```
+
+Run basic model testing interaction of Load with log trimmed mean RT
+```{r}
+contrasts.facLoad.log_trim_meanRT = rbind(
+    'Load3:log_trim_meanRT vs Load6:log_trim_meanRT' = c(0,0,0,0,0,0,0,0,0,0,0,1,0),
+    'Load6:log_trim_meanRT vs Load9:log_trim_meanRT' = c(0,0,0,0,0,0,0,0,0,0,0,-1,1),
+    'Load3:log_trim_meanRT vs Load9:log_trim_meanRT' = c(0,0,0,0,0,0,0,0,0,0,0,0,1)
+)
+lme.facLoad.log_trim_meanRT = lmer(residPCA ~ facLoad*log_trim_meanRT + apoe4 +
+                                     c.age_v2 + site_v2rev + Device + acamedbin + 
+                                     (1 | case/vetsaid), data=pupilSimpleRT)
+summary(lme.facLoad.log_trim_meanRT)
+summary(glht(lme.facLoad.log_trim_meanRT, contrasts.facLoad.log_trim_meanRT), 
+              test = adjusted("none"))
+```
+
+Run basic model testing interaction of Load with log standard deviation RT
+```{r}
+contrasts.facLoad.log_stdRT = rbind(
+    'Load3:log_stdRT vs Load6:log_stdRT' = c(0,0,0,0,0,0,0,0,0,0,0,1,0),
+    'Load6:log_stdRT vs Load9:log_stdRT' = c(0,0,0,0,0,0,0,0,0,0,0,-1,1),
+    'Load3:log_stdRT vs Load9:log_stdRT' = c(0,0,0,0,0,0,0,0,0,0,0,0,1)
+)
+lme.facLoad.log_stdRT = lmer(residPCA ~ facLoad*log_stdRT + apoe4 + c.age_v2 + 
+                            site_v2rev + Device + acamedbin + (1 | case/vetsaid), 
+                          data=pupilSimpleRT)
+summary(lme.facLoad.log_stdRT)
+summary(glht(lme.facLoad.log_stdRT, contrasts.facLoad.log_stdRT), 
+              test = adjusted("none"))
+```
+
+Run basic model testing interaction of Load with log coeffient of variance RT
+```{r}
+contrasts.facLoad.log_cvRT = rbind(
+    'Load3:log_cvRT vs Load6:log_cvRT' = c(0,0,0,0,0,0,0,0,0,0,0,1,0),
+    'Load6:log_cvRT vs Load9:log_cvRT' = c(0,0,0,0,0,0,0,0,0,0,0,-1,1),
+    'Load3:log_cvRT vs Load9:log_cvRT' = c(0,0,0,0,0,0,0,0,0,0,0,0,1)
+)
+lme.facLoad.log_cvRT = lmer(residPCA ~ facLoad*log_cvRT + apoe4 + c.age_v2 + 
+                            site_v2rev + Device + acamedbin + (1 | case/vetsaid), 
+                          data=pupilSimpleRT)
+summary(lme.facLoad.log_cvRT)
+summary(glht(lme.facLoad.log_cvRT, contrasts.facLoad.log_cvRT), 
+              test = adjusted("none"))
+```
+
+```{r}
+contrasts.facLoad.log_medianRT = rbind(
+    'Load3:log_medianRT vs Load6:log_medianRT' = c(0,0,0,0,0,0,0,0,0,0,0,1,0),
+    'Load6:log_medianRT vs Load9:log_medianRT' = c(0,0,0,0,0,0,0,0,0,0,0,-1,1),
+    'Load3:log_medianRT vs Load9:log_medianRT' = c(0,0,0,0,0,0,0,0,0,0,0,0,1)
+)
+lme.facLoad.log_medianRT = lmer(residPCA ~ facLoad*log_medianRT + apoe4 + 
+                                  c.age_v2 + site_v2rev + Device + acamedbin + 
+                                  (1 | case/vetsaid), data=pupilSimpleRT)
+summary(lme.facLoad.log_medianRT)
+summary(glht(lme.facLoad.log_medianRT, contrasts.facLoad.log_medianRT), 
+              test = adjusted("none"))
+```
 
 ```{r}
 print(sessionInfo(), locale = FALSE)

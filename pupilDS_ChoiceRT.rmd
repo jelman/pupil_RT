@@ -120,12 +120,12 @@ pupilChoiceRT %<>%
                    resid_log_stdRT = mean(resid_log_stdRT),
                    log_cvRT = mean(log_cvRT),
                    log_trim_meanRT = mean(log_trim_meanRT)) %>%
-  mutate(q.log_meanRT = quantcut(log_meanRT, labels=seq(1,4)),
-         q.log_medianRT = quantcut(log_medianRT, labels=seq(1,4)),
-         q.log_stdRT = quantcut(log_stdRT, labels=seq(1,4)),
-         q.resid_log_stdRT = quantcut(resid_log_stdRT, labels=seq(1,4)),
-         q.log_cvRT = quantcut(log_cvRT, labels=seq(1,4)),
-         q.log_trim_meanRT = quantcut(log_trim_meanRT, labels=seq(1,4))) %>%
+  mutate(q.log_meanRT = quantcut(log_meanRT, q=4, labels=seq(1,4)),
+         q.log_medianRT = quantcut(log_medianRT, q=4, labels=seq(1,4)),
+         q.log_stdRT = quantcut(log_stdRT, q=4, labels=seq(1,4)),
+         q.resid_log_stdRT = quantcut(resid_log_stdRT, q=4, labels=seq(1,4)),
+         q.log_cvRT = quantcut(log_cvRT, q=4, labels=seq(1,4)),
+         q.log_trim_meanRT = quantcut(log_trim_meanRT, q=4, labels=seq(1,4))) %>%
   dplyr::select(vetsaid,q.log_meanRT,q.log_medianRT,q.log_stdRT,
                 q.resid_log_stdRT,q.log_cvRT,q.log_trim_meanRT) %>%
   inner_join(pupilChoiceRT, by="vetsaid")
@@ -167,7 +167,7 @@ rtSubset = pupilChoiceRT %>%
                 log_stdRT, resid_log_stdRT, log_cvRT)
 
 plot_list = list()
-for (i in 1:6) {
+for (i in 1:ncol(rtSubset)) {
   p = ggplot(rtSubset,aes_string(x = rtSubset[i])) +
         geom_histogram(fill="steelblue",color="gray") + xlab(names(rtSubset[i]))
   plot_list[[i]] = p
@@ -182,7 +182,8 @@ ggsave("K:/ReactionTime/results/rtHists.pdf", g)
 
 Plot pupil dilation of all RT measure quantile groups
 ```{r}
-rtMeasures = c("log_meanRT","log_medianRT","log_stdRT","log_cvRT")
+rtMeasures = c("log_meanRT","log_trim_meanRT","log_medianRT",
+               "log_stdRT","resid_log_stdRT","log_cvRT")
 measureList = list()
 for (measure in rtMeasures){
   measureList[[measure]] = summarySEwithin(pupilChoiceRT, 
@@ -193,20 +194,55 @@ for (measure in rtMeasures){
                 na.rm=TRUE)
 }
 
-# summaryResidPCA.logCRP = summarySEwithin(pupilInf.lt10, 
-#                 measurevar="residPCA", 
-#                 idvar="vetsaid", 
-#                 withinvars="Load", 
-#                 betweenvars="q.log.CRP_v2",
-#                 na.rm=TRUE)
-#   
-# ggplot(summaryResidPCA.logCRP, aes(x=Load,y=residPCA, 
-#                                    color=q.log.CRP_v2, group=q.log.CRP_v2)) +
-#       geom_line() +
-#       geom_errorbar(width=.1, aes(ymin=residPCA-ci,ymax=residPCA+ci)) +
-#       ggtitle("Pupil dilation by CRP quantile") + theme_bw() +
-#       ylab("Change in Pupil Diameter\n(Adjusted for Baseline)") +
-#       scale_color_discrete(name="log CRP\nquantile")
+q.rtMeasures = paste("q",rtMeasures, sep=".")
+plot_list = list()
+for (i in 1:length(q.rtMeasures)) {
+  p = ggplot(measureList[[i]], aes_string(x="Load",y="residPCA", 
+                              color=q.rtMeasures[i], group=q.rtMeasures[i])) +
+    geom_line() + 
+    geom_errorbar(width=.1, aes(ymin=residPCA-ci,ymax=residPCA+ci)) +
+    ggtitle(paste0("Pupil dilation by ",q.rtMeasures[i]," quantile")) +
+    theme_bw() + ylab("Change in Pupil Diameter\n(Adjusted for Baseline)") +
+    scale_color_discrete(name=paste0(rtMeasures[i],"\nquantile"),
+                         labels=c("Lower","Upper"))
+  plot_list[[i]] = p
+}
+do.call(grid.arrange, c(plot_list, list(ncol=2)))
+
+```
+
+```{r, include=FALSE}
+g = do.call(arrangeGrob,  c(plot_list, list(ncol=2)))
+ggsave("K:/ReactionTime/results/PCAxLoadxChoiceRT_allGroups.pdf", g,
+        width=12,height=10)
+```
+
+```{r, include=FALSE}
+##Plot pupil dilation of upper and lower RT measure quantile groups
+# plot_list = list()
+# for (i in 1:length(q.rtMeasures)) {
+#   call <- substitute(filter(summarydf, target==1 | target==4),
+#                          list(summarydf = measureList[[i]],
+#                               target = as.name(q.rtMeasures[[i]]))) 
+#   df = eval(call) 
+#   p = ggplot(df, aes_string(x="Load",y="residPCA", 
+#                               color=q.rtMeasures[i], group=q.rtMeasures[i])) +
+#     geom_line() + 
+#     geom_errorbar(width=.1, aes(ymin=residPCA-ci,ymax=residPCA+ci)) +
+#     ggtitle(paste0("Pupil dilation by ",q.rtMeasures[i]," quantile")) +
+#     theme_bw() + ylab("Change in Pupil Diameter\n(Adjusted for Baseline)") +
+#     scale_color_discrete(name=paste0(rtMeasures[i],"\nquantile"),
+#                          labels=c("Lower","Upper"))
+#   plot_list[[i]] = p
+# }
+# do.call(grid.arrange, c(plot_list, list(ncol=2)))
+
+```
+
+```{r, include=FALSE}
+# g = do.call(arrangeGrob,  c(plot_list, list(ncol=2)))
+# ggsave("K:/ReactionTime/results/PCAxLoadxChoiceRT_Quartiles.pdf", g, 
+#         width=12, height=10)
 ```
 
 Run basic model testing interaction of Load with log mean RT

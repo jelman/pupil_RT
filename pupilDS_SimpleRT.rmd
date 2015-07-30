@@ -117,15 +117,17 @@ pupilSimpleRT %<>%
   dplyr::summarise(log_meanRT = mean(log_meanRT),
                    log_medianRT = mean(log_medianRT),
                    log_stdRT = mean(log_stdRT),
+                   resid_log_stdRT = mean(resid_log_stdRT),
                    log_cvRT = mean(log_cvRT),
                    log_trim_meanRT = mean(log_trim_meanRT)) %>%
   mutate(q.log_meanRT = quantcut(log_meanRT, labels=seq(1,4)),
          q.log_medianRT = quantcut(log_medianRT, labels=seq(1,4)),
          q.log_stdRT = quantcut(log_stdRT, labels=seq(1,4)),
+         q.resid_log_stdRT = quantcut(resid_log_stdRT, labels=seq(1,4)),
          q.log_cvRT = quantcut(log_cvRT, labels=seq(1,4)),
          q.log_trim_meanRT = quantcut(log_trim_meanRT, labels=seq(1,4))) %>%
   dplyr::select(vetsaid,q.log_meanRT,q.log_medianRT,q.log_stdRT,
-                q.log_cvRT,q.log_trim_meanRT) %>%
+                q.resid_log_stdRT,q.log_cvRT,q.log_trim_meanRT) %>%
   inner_join(pupilSimpleRT, by="vetsaid")
 
 # Create residPCA by regressing BaselineDiameter from PCA and taking the residuals.
@@ -161,10 +163,11 @@ Plot histograms of RT measures
 ```{r}
 rtSubset = pupilSimpleRT %>%
   filter(Load==3) %>%
-  dplyr::select(log_meanRT, log_medianRT, log_stdRT, log_cvRT)
+  dplyr::select(log_meanRT, log_trim_meanRT, log_medianRT, 
+                log_stdRT, resid_log_stdRT, log_cvRT)
 
 plot_list = list()
-for (i in 1:4) {
+for (i in 1:6) {
   p = ggplot(rtSubset,aes_string(x = rtSubset[i])) +
         geom_histogram(fill="steelblue",color="gray") + xlab(names(rtSubset[i]))
   plot_list[[i]] = p
@@ -190,20 +193,20 @@ for (measure in rtMeasures){
                 na.rm=TRUE)
 }
 
-summaryResidPCA.logCRP = summarySEwithin(pupilInf.lt10, 
-                measurevar="residPCA", 
-                idvar="vetsaid", 
-                withinvars="Load", 
-                betweenvars="q.log.CRP_v2",
-                na.rm=TRUE)
-  
-ggplot(summaryResidPCA.logCRP, aes(x=Load,y=residPCA, 
-                                   color=q.log.CRP_v2, group=q.log.CRP_v2)) +
-      geom_line() +
-      geom_errorbar(width=.1, aes(ymin=residPCA-ci,ymax=residPCA+ci)) +
-      ggtitle("Pupil dilation by CRP quantile") + theme_bw() +
-      ylab("Change in Pupil Diameter\n(Adjusted for Baseline)") +
-      scale_color_discrete(name="log CRP\nquantile")
+# summaryResidPCA.logCRP = summarySEwithin(pupilInf.lt10, 
+#                 measurevar="residPCA", 
+#                 idvar="vetsaid", 
+#                 withinvars="Load", 
+#                 betweenvars="q.log.CRP_v2",
+#                 na.rm=TRUE)
+#   
+# ggplot(summaryResidPCA.logCRP, aes(x=Load,y=residPCA, 
+#                                    color=q.log.CRP_v2, group=q.log.CRP_v2)) +
+#       geom_line() +
+#       geom_errorbar(width=.1, aes(ymin=residPCA-ci,ymax=residPCA+ci)) +
+#       ggtitle("Pupil dilation by CRP quantile") + theme_bw() +
+#       ylab("Change in Pupil Diameter\n(Adjusted for Baseline)") +
+#       scale_color_discrete(name="log CRP\nquantile")
 ```
 
 Run basic model testing interaction of Load with log mean RT
@@ -248,6 +251,22 @@ lme.facLoad.log_stdRT = lmer(residPCA ~ facLoad*log_stdRT + apoe4 + c.age_v2 +
                           data=pupilSimpleRT)
 summary(lme.facLoad.log_stdRT)
 summary(glht(lme.facLoad.log_stdRT, contrasts.facLoad.log_stdRT), 
+              test = adjusted("none"))
+```
+
+Run basic model testing interaction of Load with residual log standard deviation RT
+```{r}
+contrasts.facLoad.resid_log_stdRT = rbind(
+    'Load3:resid_log_stdRT vs Load6:resid_log_stdRT' = c(0,0,0,0,0,0,0,0,0,0,0,1,0),
+    'Load6:resid_log_stdRT vs Load9:resid_log_stdRT' = c(0,0,0,0,0,0,0,0,0,0,0,-1,1),
+    'Load3:resid_log_stdRT vs Load9:resid_log_stdRT' = c(0,0,0,0,0,0,0,0,0,0,0,0,1)
+)
+lme.facLoad.resid_log_stdRT = lmer(residPCA ~ facLoad*resid_log_stdRT + 
+                                   apoe4 + c.age_v2 + site_v2rev + Device +
+                                   acamedbin + (1 | case/vetsaid),
+                                   data=pupilSimpleRT)
+summary(lme.facLoad.resid_log_stdRT)
+summary(glht(lme.facLoad.resid_log_stdRT, contrasts.facLoad.resid_log_stdRT), 
               test = adjusted("none"))
 ```
 

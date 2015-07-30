@@ -169,7 +169,8 @@ rtSubset = pupilChoiceRT %>%
 plot_list = list()
 for (i in 1:ncol(rtSubset)) {
   p = ggplot(rtSubset,aes_string(x = rtSubset[i])) +
-        geom_histogram(fill="steelblue",color="gray") + xlab(names(rtSubset[i]))
+        geom_histogram(fill="steelblue",color="gray") + 
+        xlab(names(rtSubset[i])) + theme_bw()
   plot_list[[i]] = p
 }
 do.call(grid.arrange, c(plot_list, list(ncol=2)))
@@ -207,8 +208,7 @@ for (i in 1:length(q.rtMeasures)) {
                          labels=c("Lower","Upper"))
   plot_list[[i]] = p
 }
-do.call(grid.arrange, c(plot_list, list(ncol=2)))
-
+plot_list
 ```
 
 ```{r, include=FALSE}

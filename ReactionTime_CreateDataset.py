@@ -8,6 +8,7 @@ Created on Thu Jul 16 12:53:44 2015
 import pandas as pd
 import os
 import numpy as np
+import statsmodels.api as sm
     
 def filter_trialproc(df):
     """Filter dataframe for TrialProc procedure. This gets rid of Instructions 
@@ -155,30 +156,48 @@ def get_hitmiss_rate(summed_df, trialtypes=[' ','Left','Right']):
         misses = summed_df[''.join([trial,'misses'])]
         hitratevarname = ''.join([trial,'hitrate'])
         missratevarname = ''.join([trial,'missrate'])
-        summed_df[hitratevarname], summed_df[missratevarname] = calc_hitmiss_rate(hits,misses)
+        summed_df.loc[:,hitratevarname], summed_df.loc[:,missratevarname] = calc_hitmiss_rate(hits,misses)
     return summed_df
 
-def transform_scores(df, varnames=['mean','std','cv','median']):
-    pattern = '|'.join(varnames)
-    varlist = df.columns[df.columns.str.contains(pattern).tolist()].tolist()
-    for var in varlist:
-        df['_'.join(['log',var])] = np.log(df[var])
-    return df
-        
 def apply_excludes(df):
     """ Placeholder function. """
     exclude_idx =  ((df['lntrials']<8) |
                     (df['rntrials']<8) |
-                    (df['ntrials']<16))
+                    (df['ntrials']<16) |
+                    (df['lhits']<2) |
+                    (df['rhits']<2))
     return df.ix[~exclude_idx]
+
+def transform_scores(df, varnames=['mean','std','cv','median']):
+    pattern = '|'.join(varnames)
+    varlist = df.columns[df.columns.str.contains(pattern)].tolist()
+    for var in varlist:
+        df.loc[:,'_'.join(['log',var])] = np.log(df[var])
+    return df
     
+def calc_resid(trialdf, xCols, yCols):
+    for i in range(len(yCols)):
+        y = trialdf[yCols[i]]
+        X = sm.add_constant(trialdf[xCols[i]])
+        est = sm.OLS(y,X, missing='drop').fit()
+        newCol = '_'.join(['resid',yCols[i]])
+        trialdf.loc[:,newCol] = est.resid
+    return trialdf
+    
+def get_resid_std(df, meanCols, stdCols):
+    return df.groupby(level='TrialType').apply(
+                                    lambda x: calc_resid(x,meanCols,stdCols))
+     
 def main(infile, outfile):
     rt_raw = pd.read_csv(infile, sep=',')
     rt_filt = apply_filters(rt_raw)
     rt_summed = summarise_subjects(rt_filt)
     rt_rates = get_hitmiss_rate(rt_summed)
-    rt_trans = transform_scores(rt_rates)
-    rt_clean = apply_excludes(rt_trans)
+    rt_clean = apply_excludes(rt_rates)
+    rt_clean = transform_scores(rt_clean)
+    stdCols=['log_stdRT','log_lstdRT','log_rstdRT'] 
+    meanCols=['log_meanRT','log_lmeanRT','log_rmeanRT']
+    rt_clean = get_resid_std(rt_clean, meanCols, stdCols )
     rt_clean.to_csv(outfile, index=True)    
     
     

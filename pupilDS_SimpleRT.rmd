@@ -120,12 +120,12 @@ pupilSimpleRT %<>%
                    resid_log_stdRT = mean(resid_log_stdRT),
                    log_cvRT = mean(log_cvRT),
                    log_trim_meanRT = mean(log_trim_meanRT)) %>%
-  mutate(q.log_meanRT = quantcut(log_meanRT, labels=seq(1,4)),
-         q.log_medianRT = quantcut(log_medianRT, labels=seq(1,4)),
-         q.log_stdRT = quantcut(log_stdRT, labels=seq(1,4)),
-         q.resid_log_stdRT = quantcut(resid_log_stdRT, labels=seq(1,4)),
-         q.log_cvRT = quantcut(log_cvRT, labels=seq(1,4)),
-         q.log_trim_meanRT = quantcut(log_trim_meanRT, labels=seq(1,4))) %>%
+  mutate(q.log_meanRT = quantcut(log_meanRT, q=2, labels=seq(1,2)),
+         q.log_medianRT = quantcut(log_medianRT, q=2, labels=seq(1,2)),
+         q.log_stdRT = quantcut(log_stdRT, q=2, labels=seq(1,2)),
+         q.resid_log_stdRT = quantcut(resid_log_stdRT, q=2, labels=seq(1,2)),
+         q.log_cvRT = quantcut(log_cvRT, q=2, labels=seq(1,2)),
+         q.log_trim_meanRT = quantcut(log_trim_meanRT, q=2, labels=seq(1,2))) %>%
   dplyr::select(vetsaid,q.log_meanRT,q.log_medianRT,q.log_stdRT,
                 q.resid_log_stdRT,q.log_cvRT,q.log_trim_meanRT) %>%
   inner_join(pupilSimpleRT, by="vetsaid")

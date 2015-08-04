@@ -266,6 +266,11 @@ ggsave("K:/ReactionTime/results/PCAxLoadxChoiceRT_allGroups.pdf", g,
 #         width=12, height=10)
 ```
 
+```{r, include=FALSE}
+# Levels of load to test
+loads = c(3,6,9)
+```
+
 **Log Mean RT**
 ```{r, echo=FALSE}
 plot_list[[1]]
@@ -285,6 +290,16 @@ lme.facLoad.log_meanRT = lmer(residPCA ~ facLoad*log_meanRT + apoe4 + c.age_v2 +
 summary(lme.facLoad.log_meanRT)
 summary(glht(lme.facLoad.log_meanRT, contrasts.facLoad.log_meanRT), 
               test = adjusted("none"))
+```
+
+Test for differences based on mean RT within each level of Load
+```{r}
+lme.log_meanRT.loads <- lapply(loads, function(x) {
+    lmer(residPCA ~ log_meanRT + apoe4 + c.age_v2 + site_v2rev + 
+                    Device + acamedbin + c.DSFMAX_v2 + c.afqtpcttran_v2 + 
+                    (1 | case), data=filter(pupilChoiceRT,Load==x))
+})
+lapply(lme.log_meanRT.loads, summary)
 ```
 
 **Log Median RT**
@@ -308,6 +323,16 @@ summary(glht(lme.facLoad.log_medianRT, contrasts.facLoad.log_medianRT),
               test = adjusted("none"))
 ```
 
+Test for differences based on median RT within each level of Load
+```{r}
+lme.log_medianRT.loads <- lapply(loads, function(x) {
+    lmer(residPCA ~ log_medianRT + apoe4 + c.age_v2 + site_v2rev + 
+                    Device + acamedbin + c.DSFMAX_v2 + c.afqtpcttran_v2 + 
+                    (1 | case), data=filter(pupilChoiceRT,Load==x))
+})
+lapply(lme.log_medianRT.loads, summary)
+```
+
 **Log Standard Deviation RT**
 ```{r, echo=FALSE}
 plot_list[[4]]
@@ -327,6 +352,16 @@ lme.facLoad.log_stdRT = lmer(residPCA ~ facLoad*log_stdRT + apoe4 + c.age_v2 +
 summary(lme.facLoad.log_stdRT)
 summary(glht(lme.facLoad.log_stdRT, contrasts.facLoad.log_stdRT), 
               test = adjusted("none"))
+```
+
+Test for differences based on standard deviation RT within each level of Load
+```{r}
+lme.log_stdRT.loads <- lapply(loads, function(x) {
+    lmer(residPCA ~ log_stdRT + apoe4 + c.age_v2 + site_v2rev + 
+                    Device + acamedbin + c.DSFMAX_v2 + c.afqtpcttran_v2 + 
+                    (1 | case), data=filter(pupilChoiceRT,Load==x))
+})
+lapply(lme.log_stdRT.loads, summary)
 ```
 
 **Log Residual Standard Deviation RT**
@@ -351,6 +386,16 @@ summary(glht(lme.facLoad.resid_log_stdRT, contrasts.facLoad.resid_log_stdRT),
               test = adjusted("none"))
 ```
 
+Test for differences based on residual standard deviation RT within each level of Load
+```{r}
+lme.resid_log_stdRT.loads <- lapply(loads, function(x) {
+    lmer(residPCA ~ resid_log_stdRT + apoe4 + c.age_v2 + site_v2rev + 
+                    Device + acamedbin + c.DSFMAX_v2 + c.afqtpcttran_v2 + 
+                    (1 | case), data=filter(pupilChoiceRT,Load==x))
+})
+lapply(lme.resid_log_stdRT.loads, summary)
+```
+
 **Log Coefficient of Variation RT**
 ```{r, echo=FALSE}
 plot_list[[6]]
@@ -372,6 +417,17 @@ summary(glht(lme.facLoad.log_cvRT, contrasts.facLoad.log_cvRT),
               test = adjusted("none"))
 ```
 
+Test for differences based on coeffiecient of variation RT within each level of Load
+```{r}
+lme.log_cvRT.loads <- lapply(loads, function(x) {
+    lmer(residPCA ~ log_cvRT + apoe4 + c.age_v2 + site_v2rev + 
+                    Device + acamedbin + c.DSFMAX_v2 + c.afqtpcttran_v2 + 
+                    (1 | case), data=filter(pupilChoiceRT,Load==x))
+})
+lapply(lme.log_cvRT.loads, summary)
+```
+
+----------------------------
 Save out analysis dataset
 ```{r, include=FALSE}
 write.csv(pupilChoiceRT, "K:/ReactionTime/data/pupilDS_ChoiceRT_AnalysisDataset.csv")

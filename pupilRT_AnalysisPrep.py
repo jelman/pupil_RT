@@ -44,6 +44,9 @@ RTdf = pd.read_csv('K:/data/ReactionTime/ReactionTime_processed.csv')
 simpleRT = RTdf[RTdf['TrialType']=='Simple']
 choiceRT = RTdf[RTdf['TrialType']=='Choice']
 
+# Load MCI data
+MCIdf = pd.read_csv('K:/data/VETSA2_MCI.csv')
+
 ## Merge datasets
 # Simple RT
 pupil_simpleRT = pd.merge(pupildf, simpleRT, left_on='vetsaid', 
@@ -55,6 +58,9 @@ pupil_simpleRT = pupil_simpleRT.drop(['case_y','twin_y','zyg14_y',
 pupil_simpleRT = pupil_simpleRT.rename(columns={'case_x':'case',
                                                 'twin_x':'twin',
                                                 'zyg14_x':'zyg14'})
+pupil_simpleRT = pd.merge(pupil_simpleRT, MCIdf[['vetsaid','rMCI_cons_v2']], 
+                         left_on='vetsaid',right_on='vetsaid', how='left')   
+                             
 # Choice RT                                                
 pupil_choiceRT = pd.merge(pupildf, choiceRT, left_on='vetsaid', 
                    right_on='SubjectID', how='left')
@@ -65,7 +71,9 @@ pupil_choiceRT = pupil_choiceRT.drop(['case_y','twin_y','zyg14_y',
 pupil_choiceRT = pupil_choiceRT.rename(columns={'case_x':'case',
                                                 'twin_x':'twin',
                                                 'zyg14_x':'zyg14'})                   
-
+pupil_choiceRT = pd.merge(pupil_choiceRT, MCIdf[['vetsaid','rMCI_cons_v2']], 
+                         left_on='vetsaid',right_on='vetsaid', how='left') 
+                         
 # Save out files
 simple_outfile = os.path.join(datadir,'pupil_simpleRT.csv')
 pupil_simpleRT.to_csv(simple_outfile, index=False)

@@ -33,6 +33,7 @@ pupilChoiceRT = read.csv("K:/ReactionTime/data/pupil_choiceRT.csv",
                          stringsAsFactors = FALSE)
 pupilChoiceRT = pupilChoiceRT[!is.na(pupilChoiceRT$PCA) &
                               !is.na(pupilChoiceRT$meanRT),]
+pupilChoiceRT = subset(pupilChoiceRT, vetsa2=='vetsa2')
 str(pupilChoiceRT)
 ```
 
@@ -80,16 +81,14 @@ pupilChoiceRT %<>%
                    log_medianRT = mean(log_medianRT),
                    log_stdRT = mean(log_stdRT),
                    resid_log_stdRT = mean(resid_log_stdRT),
-                   log_cvRT = mean(log_cvRT),
-                   log_trim_meanRT = mean(log_trim_meanRT)) %>%
+                   log_cvRT = mean(log_cvRT)) %>%
   mutate(q.log_meanRT = quantcut(log_meanRT, q=4, labels=seq(1,4)),
          q.log_medianRT = quantcut(log_medianRT, q=4, labels=seq(1,4)),
          q.log_stdRT = quantcut(log_stdRT, q=4, labels=seq(1,4)),
          q.resid_log_stdRT = quantcut(resid_log_stdRT, q=4, labels=seq(1,4)),
-         q.log_cvRT = quantcut(log_cvRT, q=4, labels=seq(1,4)),
-         q.log_trim_meanRT = quantcut(log_trim_meanRT, q=4, labels=seq(1,4))) %>%
+         q.log_cvRT = quantcut(log_cvRT, q=4, labels=seq(1,4))) %>%
   dplyr::select(vetsaid,q.log_meanRT,q.log_medianRT,q.log_stdRT,
-                q.resid_log_stdRT,q.log_cvRT,q.log_trim_meanRT) %>%
+                q.resid_log_stdRT,q.log_cvRT) %>%
   inner_join(pupilChoiceRT, by="vetsaid")
 
 # Create residPCA by regressing BaselineDiameter from PCA and taking the residuals.
@@ -186,7 +185,7 @@ Plot histograms of RT measures
 ```{r}
 rtSubset = pupilChoiceRT %>%
   filter(Load==3) %>%
-  dplyr::select(log_meanRT, log_trim_meanRT, log_medianRT, 
+  dplyr::select(log_meanRT, log_medianRT, 
                 log_stdRT, resid_log_stdRT, log_cvRT)
 
 plot_list = list()
@@ -206,7 +205,7 @@ ggsave("K:/ReactionTime/results/rtHists.pdf", g)
 
 Plot pupil dilation of all RT measure quantile groups
 ```{r}
-rtMeasures = c("log_meanRT","log_trim_meanRT","log_medianRT",
+rtMeasures = c("log_meanRT","log_medianRT",
                "log_stdRT","resid_log_stdRT","log_cvRT")
 measureList = list()
 for (measure in rtMeasures){
@@ -304,7 +303,7 @@ lapply(lme.log_meanRT.loads, summary)
 
 **Log Median RT**
 ```{r, echo=FALSE}
-plot_list[[3]]
+plot_list[[2]]
 ```
 
 Run basic model testing interaction of Load with log median RT
@@ -335,7 +334,7 @@ lapply(lme.log_medianRT.loads, summary)
 
 **Log Standard Deviation RT**
 ```{r, echo=FALSE}
-plot_list[[4]]
+plot_list[[3]]
 ```
 
 Run basic model testing interaction of Load with log standard deviation RT
@@ -366,7 +365,7 @@ lapply(lme.log_stdRT.loads, summary)
 
 **Log Residual Standard Deviation RT**
 ```{r, echo=FALSE}
-plot_list[[5]]
+plot_list[[4]]
 ```
 
 Run basic model testing interaction of Load with residual log standard deviation RT
@@ -398,7 +397,7 @@ lapply(lme.resid_log_stdRT.loads, summary)
 
 **Log Coefficient of Variation RT**
 ```{r, echo=FALSE}
-plot_list[[6]]
+plot_list[[5]]
 ```
 
 Run basic model testing interaction of Load with log coeffient of variance RT

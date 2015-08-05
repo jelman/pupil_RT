@@ -28,11 +28,20 @@ def filter_minRT(df, minRT=150):
     df.loc[minRTmask,'Stimulus.RT'] = np.nan 
     return df
     
+#def filter_maxRT(df):
+#    """ Set trials with an RT exceeding 3 SD's from the mean 
+#    within each subject and trial type to missing. """
+#    filtMaxRT = lambda x: x > (x.mean() + (3*x.std()))
+#    maxRTmask = df.groupby(['SubjectID','TrialType'])['Stimulus.RT'].apply(filtMaxRT)
+#    df.loc[maxRTmask,'Stimulus.ACC'] = 0    
+#    df.loc[maxRTmask,'Stimulus.RESP'] = np.nan   
+#    return df
+
 def filter_maxRT(df):
     """ Set trials with an RT exceeding 3 SD's from the mean 
-    within each subject and trial type to missing. """
+    within each trial type and trial to missing. """
     filtMaxRT = lambda x: x > (x.mean() + (3*x.std()))
-    maxRTmask = df.groupby(['SubjectID','TrialType'])['Stimulus.RT'].apply(filtMaxRT)
+    maxRTmask = df.groupby(['TrialType','TrialList'])['Stimulus.RT'].apply(filtMaxRT)
     df.loc[maxRTmask,'Stimulus.ACC'] = 0    
     df.loc[maxRTmask,'Stimulus.RESP'] = np.nan   
     return df
@@ -96,14 +105,15 @@ def calc_trial_scores(trialdf):
     hits =  calc_hits(trialdf)
     misses =  calc_misses(trialdf)
     NR = calc_NR(trialdf)
+    errors = misses + NR
     meanRT = calc_meanRT(trialdf)
     medianRT = calc_medianRT(trialdf)
     stdRT = calc_stdRT(trialdf)
-    trim_meanRT = calc_trim_meanRT(trialdf, meanRT, stdRT)
+    #trim_meanRT = calc_trim_meanRT(trialdf, meanRT, stdRT)
     cvRT = calc_cvRT(meanRT, stdRT)
     ntrials = len(trialdf)
     summary_scores = pd.Series({'hits': hits, 'misses': misses, 'NR': NR,
-                        'meanRT': meanRT, 'trim_meanRT': trim_meanRT,
+                        'errors': errors, 'meanRT': meanRT, 
                         'medianRT': medianRT, 'stdRT': stdRT, 'cvRT': cvRT, 
                         'ntrials':ntrials})
     return summary_scores

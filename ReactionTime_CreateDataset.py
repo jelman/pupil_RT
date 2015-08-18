@@ -9,7 +9,8 @@ import pandas as pd
 import os
 import numpy as np
 import statsmodels.api as sm
-    
+from sas7bdat import SAS7BDAT
+
 def filter_trialproc(df):
     """Filter dataframe for TrialProc procedure. This gets rid of Instructions 
     and Initial Fixation slides that occurred at beginning and end of each 
@@ -197,6 +198,15 @@ def calc_resid(trialdf, xCols, yCols):
 def get_resid_std(df, meanCols, stdCols):
     return df.groupby(level='TrialType').apply(
                                     lambda x: calc_resid(x,meanCols,stdCols))
+
+def merge_qc(rtdf, cog_file, qcVars):
+    """ Merge Reaction Time data with metadata from core dataset. This includes 
+    rater Z score, computer, complete and time administered."""     
+    with SAS7BDAT(cog_file) as f:
+        cogdf = f.to_data_frame()
+    rtdf.index.names = ['vetsaid', 'TrialType']
+    rt_qc = rtdf.join(cogdf[qcVars].set_index('vetsaid'), how='left')
+    return rt_qc
      
 def main(infile, outfile):
     rt_raw = pd.read_csv(infile, sep=',')
@@ -208,8 +218,8 @@ def main(infile, outfile):
     stdCols=['log_stdRT','log_lstdRT','log_rstdRT'] 
     meanCols=['log_meanRT','log_lmeanRT','log_rmeanRT']
     rt_clean = get_resid_std(rt_clean, meanCols, stdCols )
-    rt_clean.to_csv(outfile, index=True)    
-    
+    rt_qc = merge_qc(rt_clean, cog_file, qcVars)    
+    rt_qc.to_csv(outfile, index=True)    
     
 ##############################################################
 ############## Set paths and parameters ######################
@@ -217,6 +227,9 @@ def main(infile, outfile):
 datapath = 'K:/data/ReactionTime' # Specify data path of RT data
 fname = 'ReactionTime_merged.csv' # Name of input data file
 infile = os.path.join(datapath,fname) # Input file
+# Core cognitive dataset and variables corresponding to session info
+cog_file = 'K:/data/VETSA2_April2015/vetsa2merged_23apr2015.sas7bdat'
+qcVars = ['vetsaid','ZRT_v2','RTCOMPLETE_v2','RTTIM_v2','RTCOMPUTER_v2']
 outname = 'ReactionTime_processed.csv' # Name of file to save out
 outfile = os.path.join(datapath, outname) # Output file
 ##############################################################

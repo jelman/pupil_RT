@@ -91,14 +91,20 @@ choiceRT = RTdf[RTdf['TrialType']=='Choice']
 # Load MCI data
 MCIdf = pd.read_csv(mci_fname)
 
+#Filter out subjects who were given a Z score of 2 or were not completed
+simpleRT = simpleRT.loc[(simpleRT['ZRT_v2']!=2) & 
+                      (simpleRT['RTCOMPLETE_v2']==0)]
+                      
+choiceRT = choiceRT.loc[(choiceRT['ZRT_v2']!=2) & 
+                      (choiceRT['RTCOMPLETE_v2']==0)]    
+                      
 ## Merge datasets
 # Simple RT
 pupil_simpleRT = pd.merge(pupildf, simpleRT, left_on='vetsaid', 
-                   right_on='SubjectID', how='inner')                  
+                   right_on='vetsaid', how='inner')                  
 pupil_simpleRT = pd.merge(pupil_simpleRT, cogdf, left_on='vetsaid', 
                    right_on='vetsaid', how='inner')
-pupil_simpleRT = pupil_simpleRT.drop(['case_y','twin_y','zyg14_y',
-                                      'SubjectID'], axis=1)
+pupil_simpleRT = pupil_simpleRT.drop(['case_y','twin_y','zyg14_y'], axis=1)
 pupil_simpleRT = pupil_simpleRT.rename(columns={'case_x':'case',
                                                 'twin_x':'twin',
                                                 'zyg14_x':'zyg14'})
@@ -107,11 +113,10 @@ pupil_simpleRT = pd.merge(pupil_simpleRT, MCIdf[['vetsaid','rMCI_cons_v2']],
                              
 # Choice RT                                                
 pupil_choiceRT = pd.merge(pupildf, choiceRT, left_on='vetsaid', 
-                   right_on='SubjectID', how='inner')
+                   right_on='vetsaid', how='inner')
 pupil_choiceRT = pd.merge(pupil_choiceRT, cogdf, left_on='vetsaid', 
                    right_on='vetsaid', how='inner')    
-pupil_choiceRT = pupil_choiceRT.drop(['case_y','twin_y','zyg14_y',
-                                      'SubjectID'], axis=1)                   
+pupil_choiceRT = pupil_choiceRT.drop(['case_y','twin_y','zyg14_y'], axis=1)                   
 pupil_choiceRT = pupil_choiceRT.rename(columns={'case_x':'case',
                                                 'twin_x':'twin',
                                                 'zyg14_x':'zyg14'})                   

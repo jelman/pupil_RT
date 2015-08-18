@@ -17,13 +17,13 @@ cogv2_fname = 'K:/pupillometry/data/cognitive/vetsa2merged_23apr2015.sas7bdat'
 cogv1_fname = 'K:/pupillometry/data/cognitive/vetsa1merged_21aug2014.sas7bdat'
 cogVars_fname = 'K:/ReactionTime/data/ReactionTime_CogVariables.csv'
 rt_fname = 'K:/data/ReactionTime/ReactionTime_processed.csv'
-cog_outname = 'cogData.csv'
+cog_outname = 'ReactionTime_cogData.csv'
 mci_fname = 'K:/data/VETSA2_MCI.csv'
 simple_outname = 'pupil_simpleRT.csv'
 choice_outname = 'pupil_choiceRT.csv'
 ###############################
 
-## Get cognitive data ###
+### Get cognitive data ###
 # Load cognitive scores
 with SAS7BDAT(cogv2_fname) as f:
     cogdf = f.to_data_frame()
@@ -31,18 +31,54 @@ with SAS7BDAT(cogv2_fname) as f:
 cogvars = pd.read_csv(cogVars_fname)
 cogdf = cogdf[cogvars['NAME']]
 
+# Rename variables for ethinicity, racial category, and education
+cogdf = cogdf.rename(columns={'N1_v2':'ETHNICITY',
+                              'N2_v2':'RACIALCAT',
+                              'tedrev':'EDUCATION'})
+                              
+# Load vetsa 1 cog data to get handedness
+with SAS7BDAT(cogv1_fname) as f:
+    cogdf_v1 = f.to_data_frame()
+
+# Rename ethnicity, racial category and education data
+cogdf_v1 = cogdf_v1[['vetsaid','L1','L2','tedrev']]
+cogdf_v1 = cogdf_v1.rename(columns={'L1':'ETHNICITY',
+                                    'L2':'RACIALCAT',
+                                    'tedrev':'EDUCATION'})
+#Replace missing data values with NA
+cogdf_v1['ETHNICITY'] = cogdf_v1['ETHNICITY'].replace(9,np.nan)
+cogdf_v1['RACIALCAT'] = cogdf_v1['RACIALCAT'].replace(9,np.nan)
+cogdf_v1['EDUCATION'] = cogdf_v1['EDUCATION'].replace(9,np.nan)
+
+# Update missing data in v2 with v1 data
+v1cols = ['ETHNICITY','RACIALCAT','EDUCATION']
+cogdf = cogdf.set_index('vetsaid')
+cogdf_v1 = cogdf_v1.set_index('vetsaid')
+cogdf[v1cols] = cogdf[v1cols].combine_first(cogdf_v1[v1cols])
+cogdf = cogdf.reset_index()
+
+
 # Create Apoe 4 carrier variable
 apoeidx = cogdf.apoe2014.str.contains('4')
 cogdf.ix[apoeidx, 'apoe4'] = 1
 cogdf.ix[~apoeidx, 'apoe4'] = 0
 
+# Discretize performance into quantiles
+cogdf['dsfquantile_V2'] = pd.qcut(cogdf['dsfraw_V2'], q=4, labels=[1,2,3,4])
+cogdf['dsbquantile_V2'] = pd.qcut(cogdf['dsbraw_V2'], q=4, labels=[1,2,3,4])
+cogdf['dsptotquantile_V2'] = pd.qcut(cogdf['dsptot_V2'], q=4, labels=[1,2,3,4])
+cogdf['DSFMAXquantile_v2'] = pd.qcut(cogdf['DSFMAX_v2'], q=4, labels=[1,2,3,4])
+cogdf['afqtquantile_v2'] = pd.qcut(cogdf['afqtpcttran_v2'],q=4,labels=[1,2,3,4])
+cogdf['lnquantile_V2'] = pd.qcut(cogdf['lntot_V2'],q=4,labels=[1,2,3,4])
+
 # Set missing missing values in head injury variables
 cogdf.ix[cogdf['HADSHINJ_v2']==9,'HADSHINJ_v2'] = None
 cogdf.ix[cogdf['NUMHINJ_v2']==99,'NUMHINJ_v2'] = None
 
+
 # Save out cognitive data
-outfile = os.path.join(datadir, 'cogData.csv')
-cogdf.to_csv(outfile, index=False)
+cog_outfile = os.path.join(datadir, cog_outname)
+cogdf.to_csv(cog_outfile, index=False)
 
 # Load pupil data
 pupildf = pd.read_csv(pupil_fname)

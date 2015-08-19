@@ -97,33 +97,38 @@ lme.PCA.resid = lmer(PCA ~ BaselineDiameter + (1 | case/vetsaid),
 pupilSimpleRT$residPCA = resid(lme.PCA.resid)
 ```
 
+# Basic sample descriptives
+```{r, include=FALSE}
+#Create dataset with subject level variables to assess relationships with BOLD variance.
+
+subjDatSimpleRT = pupilSimpleRT %>% 
+            dplyr::select(-contains("PCA"),-contains("Load")) %>%
+            group_by(vetsaid) %>%
+            summarise_each(funs(first))
+```
+
 How many subjects?
 ```{r}
-n_distinct(pupilSimpleRT$vetsaid)
+n_distinct(subjDatSimpleRT$vetsaid)
 ```
 
 How many attrition replacements?
 ```{r}
-pupilSimpleRT %>% 
-  group_by(vetsaid) %>% 
-  dplyr::summarise(AR = first(vetsa2)) %>%
-  group_by(AR) %>%
-  dplyr::summarise(n=n())
+dplyr::count(subjDatSimpleRT, vetsa2)
 ```
 
 How many twin pairs vs unpaired twins? 
 ```{r}
-pupilSimpleRT %>%
+subjDatSimpleRT %>%
   group_by(case) %>%
   dplyr::summarise(n_twins = n_distinct(vetsaid)) %>%
-  group_by(n_twins) %>%
-  dplyr::summarise(n=n())
+  dplyr::count(n_twins)
 ```
 
 
 How many MZ and DZ pairs? (excludes unpaired subjects)
 ```{r}
-pupilSimpleRT %>% 
+subjDatSimpleRT %>% 
   group_by(case) %>%
   mutate(n_twins = n_distinct(vetsaid)) %>%
   filter(n_twins > 1) %>%
@@ -142,21 +147,9 @@ pupilSimpleRT %>%
 
 How many of each MCI group?
 ```{r}
-pupilSimpleRT %>% 
-  group_by(vetsaid) %>% 
-  dplyr::summarise(MCI = first(rMCI_cons_v2)) %>%
-  group_by(MCI) %>%
-  dplyr::summarise(n=n())
+dplyr::count(subjDatSimpleRT, rMCI_cons_v2)
 ```
 
-How many of each MCI group binned by single or multi-doman MCI?
-```{r}
-pupilSimpleRT %>% 
-  group_by(vetsaid) %>% 
-  dplyr::summarise(MCI = first(rMCI_cons_bin)) %>%
-  group_by(MCI) %>%
-  dplyr::summarise(n=n())
-```
 
 Plot pctPCA and residPCA data to check for ceiling effects on pupil dilation
 ```{r}

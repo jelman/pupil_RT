@@ -602,6 +602,57 @@ lapply(lme.log_cvRT.loads.MCI, summary)
 ```
 
 ----------------------------
+# Covariate Plots 
+
+Plot pupil dilation by digit span max quantile
+```{r, echo=FALSE}
+summaryResidPCA.DSFMAX_v2 = summarySEwithin(pupilChoiceRT, 
+                measurevar="residPCA", 
+                idvar="vetsaid", 
+                withinvars="Load",
+                betweenvars="q.c.DSFMAX_v2",
+                na.rm=TRUE)
+  
+p.DSFMAX_v2 = summaryResidPCA.DSFMAX_v2 %>%
+          filter(q.c.DSFMAX_v2==1 | q.c.DSFMAX_v2==4) %>%
+          ggplot(., aes(x=Load,y=residPCA,
+                        color=q.c.DSFMAX_v2,
+                        group=q.c.DSFMAX_v2)) +
+            geom_line() +
+            geom_errorbar(width=.1, aes(ymin=residPCA-ci,ymax=residPCA+ci)) +
+            ggtitle("Max digit span") + theme_bw(16) +
+            ylab("Change in Pupil Diameter\n(Adjusted for Baseline)") +
+            scale_color_discrete(name="Max digit span\nquantile",
+                                 labels=c("Lower","Upper"))
+print(p.DSFMAX_v2)
+ggsave("K:/ReactionTime/results/pupil_MaxDigitSpan.pdf", p.DSFMAX_v2)
+```
+
+Plot pupil dilation by digit span max quantile
+```{r, echo=FALSE}
+summaryResidPCA.MCI = summarySEwithin(pupilChoiceRT, 
+                measurevar="residPCA", 
+                idvar="vetsaid", 
+                withinvars="Load",
+                betweenvars="rMCI_cons_bin",
+                na.rm=TRUE)
+  
+p.MCI = summaryResidPCA.MCI %>%
+          ggplot(., aes(x=Load,y=residPCA,
+                        color=rMCI_cons_bin,
+                        group=rMCI_cons_bin)) +
+            geom_line() +
+            geom_errorbar(width=.1, aes(ymin=residPCA-ci,ymax=residPCA+ci)) +
+            ggtitle("MCI Status") + theme_bw(16) +
+            ylab("Change in Pupil Diameter\n(Adjusted for Baseline)") +
+            scale_color_discrete(name="MCI Group", 
+                                 labels=c("No MCI",
+                                          "Single Domain MCI",
+                                          "Multi-Domain MCI"))
+print(p.MCI)
+ggsave("K:/AX-CPT/results/pupil_MCI.pdf", p.MCI)
+```
+----------------------------
 
 ```{r, include=FALSE}
 #Save out analysis dataset

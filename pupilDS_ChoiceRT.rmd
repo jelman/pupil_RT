@@ -32,7 +32,8 @@ Load data.
 ```{r}
 pupilChoiceRT = read.csv("K:/ReactionTime/data/pupil_choiceRT.csv", 
                          stringsAsFactors = FALSE)
-pupilChoiceRT = pupilChoiceRT[!is.na(pupilChoiceRT$PCA),]
+pupilChoiceRT = pupilChoiceRT[!is.na(pupilChoiceRT$PCA) &
+                              !is.na(pupilChoiceRT$rMCI_cons_v2),]
 pupilChoiceRT = subset(pupilChoiceRT, vetsa2=='vetsa2')
 str(pupilChoiceRT)
 ```
@@ -41,7 +42,7 @@ Recode two-level factors to 0/1. Center continuous data.
 *TRANSFORM*
 ```{r}
 # Create factors
-pupilChoiceRT$facLoad = factor(pupilChoiceRT$Load)
+pupilChoiceRT$facLoad = factor(pupilChoiceRT$Load,levels=c("6","3","9"))
 contr.backward.diff = matrix(c(-2/3, 1/3, 1/3,-1/3,-1/3,2/3), ncol = 2)
 contrasts(pupilChoiceRT$facLoad) = contr.backward.diff
 pupilChoiceRT$MZ = ifelse(pupilChoiceRT$zyg14==1, 1, 0)
@@ -74,21 +75,16 @@ names(c.subjDF) = paste0("c.",names(c.subjDF))
 c.subjDF$vetsaid = subjDF$vetsaid
 pupilChoiceRT = left_join(pupilChoiceRT, c.subjDF, by="vetsaid")
 
-# Create quantile groups of log RT data
+# Create quantile groups
+qVars = c("c.DSFMAX_v2","log_meanRT","log_medianRT","log_stdRT",
+          "resid_log_stdRT","log_cvRT")
+new.qVars = qVars
+names(new.qVars) = paste0("q.",qVars)
 pupilChoiceRT %<>%
   group_by(vetsaid) %>%
-  dplyr::summarise(log_meanRT = mean(log_meanRT),
-                   log_medianRT = mean(log_medianRT),
-                   log_stdRT = mean(log_stdRT),
-                   resid_log_stdRT = mean(resid_log_stdRT),
-                   log_cvRT = mean(log_cvRT)) %>%
-  mutate(q.log_meanRT = quantcut(log_meanRT, q=4, labels=seq(1,4)),
-         q.log_medianRT = quantcut(log_medianRT, q=4, labels=seq(1,4)),
-         q.log_stdRT = quantcut(log_stdRT, q=4, labels=seq(1,4)),
-         q.resid_log_stdRT = quantcut(resid_log_stdRT, q=4, labels=seq(1,4)),
-         q.log_cvRT = quantcut(log_cvRT, q=4, labels=seq(1,4))) %>%
-  dplyr::select(vetsaid,q.log_meanRT,q.log_medianRT,q.log_stdRT,
-                q.resid_log_stdRT,q.log_cvRT) %>%
+  dplyr::summarise_each_(funs(mean),qVars) %>%
+  mutate_each_(funs(quantcut(.,q=4, labels=seq(1,4))),qVars) %>%
+  dplyr::select_("vetsaid"="vetsaid",.dots=new.qVars) %>%
   inner_join(pupilChoiceRT, by="vetsaid")
 
 # Create residPCA by regressing BaselineDiameter from PCA and taking the residuals.
@@ -105,6 +101,7 @@ subjDatChoiceRT = pupilChoiceRT %>%
             dplyr::select(-contains("PCA"),-contains("Load")) %>%
             group_by(vetsaid) %>%
             summarise_each(funs(first))
+#write.csv(subjDatChoiceRT, "K:/ReactionTime/data/ChoiceRT_subjDat.csv")
 ```
 
 How many subjects?
@@ -153,6 +150,29 @@ dplyr::count(subjDatChoiceRT, rMCI_cons_v2)
 How many of each MCI group binned by single or multi-doman MCI?
 ```{r}
 dplyr::count(subjDatChoiceRT, rMCI_cons_bin)
+```
+
+Look at frequencies of MCI measures
+```{r}
+mci.p1 = sjp.frq(subjDatChoiceRT$rMCI_cons_v2, 
+          title="MCI groups",
+          axisLabels.x=c("Normal","Single Domain\nNon-amnestic",
+                         "Single Domain\nAmnestic","Multi Domain\nNon-Amnestic",
+                         "Multi Domain Amnestic"),
+          axisLimits.y = c(0,900))
+
+mci.p2 = sjp.frq(subjDatChoiceRT$rMCI_cons_bin, 
+          title="Binned MCI groups",
+          axisLabels.x=c("Normal","Single Domain MCI","Multi Domain MCI"),
+          axisLimits.y = c(0,900))
+
+grid.arrange(mci.p1$plot,mci.p2$plot)
+```
+
+```{r, include=FALSE}
+pdf("K:/ReactionTime/results/MCI_groups.pdf", width=8, height=6)
+grid.arrange(mci.p1$plot,mci.p2$plot)
+dev.off()
 ```
 
 Plot pctPCA and residPCA data to check for ceiling effects on pupil dilation

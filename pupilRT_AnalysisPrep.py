@@ -11,11 +11,11 @@ from sas7bdat import SAS7BDAT
 import os
 
 ###############################
-datadir = 'K:/ReactionTime/data'
+datadir = 'K:/Experiments/Pupil_ReactionTime/data'
 pupil_fname = 'K:/data/Pupillometry/pupilDS_long.csv'
 cogv2_fname = 'K:/pupillometry/data/cognitive/vetsa2merged_23apr2015.sas7bdat'
 cogv1_fname = 'K:/pupillometry/data/cognitive/vetsa1merged_21aug2014.sas7bdat'
-cogVars_fname = 'K:/ReactionTime/data/ReactionTime_CogVariables.csv'
+cogVars_fname = 'K:/Experiments/Pupil_ReactionTime/data/ReactionTime_CogVariables.csv'
 rt_fname = 'K:/data/ReactionTime/ReactionTime_processed.csv'
 cog_outname = 'ReactionTime_cogData.csv'
 mci_fname = 'K:/data/VETSA2_MCI.csv'

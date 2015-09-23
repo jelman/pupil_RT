@@ -30,7 +30,7 @@ source("K:/code/get_legend.R")
 
 Load data.
 ```{r}
-pupilChoiceRT = read.csv("K:/ReactionTime/data/pupil_choiceRT.csv", 
+pupilChoiceRT = read.csv("K:/Experiments/Pupil_ReactionTime/data/pupil_choiceRT.csv", 
                          stringsAsFactors = FALSE)
 pupilChoiceRT = pupilChoiceRT[!is.na(pupilChoiceRT$PCA) &
                               !is.na(pupilChoiceRT$rMCI_cons_v2),]
@@ -103,7 +103,7 @@ subjDatChoiceRT = pupilChoiceRT %>%
             dplyr::select(-contains("PCA"),-contains("Load")) %>%
             group_by(vetsaid) %>%
             summarise_each(funs(first))
-#write.csv(subjDatChoiceRT, "K:/ReactionTime/data/ChoiceRT_subjDat.csv")
+#write.csv(subjDatChoiceRT, "K:/Experiments/Pupil_ReactionTime/data/ChoiceRT_subjDat.csv")
 ```
 
 How many subjects?
@@ -172,7 +172,7 @@ grid.arrange(mci.p1$plot,mci.p2$plot)
 ```
 
 ```{r, include=FALSE}
-pdf("K:/ReactionTime/results/MCI_groups.pdf", width=8, height=6)
+pdf("K:/Experiments/Pupil_ReactionTime/results/MCI_groups.pdf", width=8, height=6)
 grid.arrange(mci.p1$plot,mci.p2$plot)
 dev.off()
 ```
@@ -180,13 +180,13 @@ dev.off()
 Plot pctPCA and residPCA data to check for ceiling effects on pupil dilation
 ```{r}
 pctPcaPlot = ggplot(pupilChoiceRT, aes(x=pctPCA)) + 
-  geom_histogram(fill="steel blue",color="black") + 
+  geom_histogram(fill="lightlightsteelblue22",color="black") + 
   facet_wrap(~ Load, nrow=3) + 
   ggtitle("Histogram of pctPCA by Load") + 
   xlab("% PCA") + theme_bw() 
 
 residPcaPlot = ggplot(pupilChoiceRT, aes(x=residPCA)) + 
-  geom_histogram(fill="steel blue",color="black") + 
+  geom_histogram(fill="lightlightsteelblue22",color="black") + 
   facet_wrap(~ Load, nrow=3) + 
   ggtitle("Histogram of residPCA by Load") + 
   xlab("PCA (adjusted for baseline)") + theme_bw() 
@@ -196,7 +196,7 @@ grid.arrange(pctPcaPlot, residPcaPlot, ncol=2)
 
 
 ```{r, include=FALSE}
-pdf("K:/ReactionTime/results/Choice/PCAxLoad.pdf")
+pdf("K:/Experiments/Pupil_ReactionTime/results/Choice/PCAxLoad.pdf")
 grid.arrange(pctPcaPlot, residPcaPlot, ncol=2)
 dev.off()
 ```
@@ -211,7 +211,7 @@ rtSubset = pupilChoiceRT %>%
 plot_list = list()
 for (i in 1:ncol(rtSubset)) {
   p = ggplot(rtSubset,aes_string(x = rtSubset[i])) +
-        geom_histogram(fill="steelblue",color="black") + 
+        geom_histogram(fill="lightlightsteelblue22",color="black") + 
         xlab(names(rtSubset[i])) + theme_bw()
   plot_list[[i]] = p
 }
@@ -221,7 +221,7 @@ do.call(grid.arrange, c(plot_list, list(ncol=2)))
 ```
 
 ```{r, include=FALSE}
-pdf("K:/ReactionTime/results/Choice/rtHists.pdf")
+pdf("K:/Experiments/Pupil_ReactionTime/results/Choice/rtHists.pdf")
 do.call(grid.arrange, c(plot_list, list(ncol=2)))
 dev.off()
 ```
@@ -260,7 +260,7 @@ for (i in 1:length(plot_list)) {
 plot_list$legend = legend
 
 #Save out plot
-pdf("K:/ReactionTime/results/Choice/PCAxLoadxChoiceRT_allGroups.pdf",width=12,height=10)
+pdf("K:/Experiments/Pupil_ReactionTime/results/Choice/PCAxLoadxChoiceRT_allGroups.pdf",width=12,height=10)
 do.call(grid.arrange,  c(plot_list, list(ncol=2)))
 dev.off()
 ```
@@ -292,7 +292,7 @@ for (i in 1:length(plot_list)) {
 plot_list$legend = legend
 
 # Save out plot
-pdf("K:/ReactionTime/results/Choice/PCAxLoadxChoiceRT_Quartiles.pdf",width=12,height=10)
+pdf("K:/Experiments/Pupil_ReactionTime/results/Choice/PCAxLoadxChoiceRT_Quartiles.pdf",width=12,height=10)
 do.call(grid.arrange,  c(plot_list, list(ncol=2)))
 dev.off()
 ```
@@ -625,7 +625,7 @@ p.DSFMAX_v2 = summaryResidPCA.DSFMAX_v2 %>%
             scale_color_discrete(name="Max digit span\nquantile",
                                  labels=c("Lower","Upper"))
 print(p.DSFMAX_v2)
-ggsave("K:/ReactionTime/results/pupil_MaxDigitSpan.pdf", p.DSFMAX_v2)
+ggsave("K:/Experiments/Pupil_ReactionTime/results/pupil_MaxDigitSpan.pdf", p.DSFMAX_v2)
 ```
 
 Plot pupil dilation by digit span max quantile
@@ -657,7 +657,7 @@ ggsave("K:/AX-CPT/results/pupil_MCI.pdf", p.MCI)
 ```{r, include=FALSE}
 #Save out analysis dataset
 write.csv(pupilChoiceRT,
-          "K:/ReactionTime/data/pupilDS_ChoiceRT_AnalysisDataset.csv")
+          "K:/Experiments/Pupil_ReactionTime/data/pupilDS_ChoiceRT_AnalysisDataset.csv")
 ```
 
 ```{r}

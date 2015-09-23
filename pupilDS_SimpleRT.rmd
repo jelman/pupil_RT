@@ -30,7 +30,7 @@ source("K:/code/get_legend.R")
 
 Load data.
 ```{r}
-pupilSimpleRT = read.csv("K:/ReactionTime/data/pupil_simpleRT.csv", 
+pupilSimpleRT = read.csv("K:/Experiments/Pupil_ReactionTime/data/pupil_simpleRT.csv", 
                          stringsAsFactors = FALSE)
 pupilSimpleRT = pupilSimpleRT[!is.na(pupilSimpleRT$PCA),]
 pupilSimpleRT = subset(pupilSimpleRT, vetsa2=='vetsa2')
@@ -158,13 +158,13 @@ dplyr::count(subjDatSimpleRT, rMCI_cons_bin)
 Plot pctPCA and residPCA data to check for ceiling effects on pupil dilation
 ```{r}
 pctPcaPlot = ggplot(pupilSimpleRT, aes(x=pctPCA)) + 
-  geom_histogram(fill="steel blue",color="black") + 
+  geom_histogram(fill="lightsteelblue2",color="black") + 
   facet_wrap(~ Load, nrow=3) + 
   ggtitle("Histogram of pctPCA by Load") + 
   xlab("% PCA") + theme_bw() 
 
 residPcaPlot = ggplot(pupilSimpleRT, aes(x=residPCA)) + 
-  geom_histogram(fill="steel blue",color="black") + 
+  geom_histogram(fill="lightsteelblue2",color="black") + 
   facet_wrap(~ Load, nrow=3) + 
   ggtitle("Histogram of residPCA by Load") + 
   xlab("PCA (adjusted for baseline)") + theme_bw() 
@@ -174,7 +174,7 @@ grid.arrange(pctPcaPlot, residPcaPlot, ncol=2)
 
 
 ```{r, include=FALSE}
-pdf("K:/ReactionTime/results/Simple/PCAxLoad.pdf")
+pdf("K:/Experiments/Pupil_ReactionTime/results/Simple/PCAxLoad.pdf")
 grid.arrange(pctPcaPlot, residPcaPlot, ncol=2)
 dev.off()
 ```
@@ -189,7 +189,7 @@ rtSubset = pupilSimpleRT %>%
 plot_list = list()
 for (i in 1:ncol(rtSubset)) {
   p = ggplot(rtSubset,aes_string(x = rtSubset[i])) +
-        geom_histogram(fill="steelblue",color="black") + 
+        geom_histogram(fill="lightsteelblue2",color="black") + 
         xlab(names(rtSubset[i])) + theme_bw()
   plot_list[[i]] = p
 }
@@ -199,7 +199,7 @@ do.call(grid.arrange, c(plot_list, list(ncol=2)))
 ```
 
 ```{r, include=FALSE}
-pdf("K:/ReactionTime/results/Simple/rtHists.pdf")
+pdf("K:/Experiments/Pupil_ReactionTime/results/Simple/rtHists.pdf")
 do.call(grid.arrange, c(plot_list, list(ncol=2)))
 dev.off()
 ```
@@ -238,7 +238,7 @@ for (i in 1:length(plot_list)) {
 plot_list$legend = legend
 
 #Save out plot
-pdf("K:/ReactionTime/results/Simple/PCAxLoadxSimpleRT_allGroups.pdf",width=12,height=10)
+pdf("K:/Experiments/Pupil_ReactionTime/results/Simple/PCAxLoadxSimpleRT_allGroups.pdf",width=12,height=10)
 do.call(grid.arrange,  c(plot_list, list(ncol=2)))
 dev.off()
 ```
@@ -270,7 +270,7 @@ for (i in 1:length(plot_list)) {
 plot_list$legend = legend
 
 # Save out plot
-pdf("K:/ReactionTime/results/Simple/PCAxLoadxSimpleRT_Quartiles.pdf",width=12,height=10)
+pdf("K:/Experiments/Pupil_ReactionTime/results/Simple/PCAxLoadxSimpleRT_Quartiles.pdf",width=12,height=10)
 do.call(grid.arrange,  c(plot_list, list(ncol=2)))
 dev.off()
 ```
@@ -440,7 +440,7 @@ lapply(lme.log_cvRT.loads, summary)
 ----------------------------
 Save out analysis dataset
 ```{r, include=FALSE}
-write.csv(pupilSimpleRT, "K:/ReactionTime/data/pupilDS_SimpleRT_AnalysisDataset.csv")
+write.csv(pupilSimpleRT, "K:/Experiments/Pupil_ReactionTime/data/pupilDS_SimpleRT_AnalysisDataset.csv")
 ```
 
 ```{r}

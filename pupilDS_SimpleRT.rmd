@@ -30,7 +30,7 @@ source("K:/code/get_legend.R")
 
 Load data.
 ```{r}
-pupilSimpleRT = read.csv("K:/Experiments/Pupil_ReactionTime/data/pupil_simpleRT.csv", 
+pupilSimpleRT = read.csv("K:/Projects/Pupil_ReactionTime/data/pupil_simpleRT.csv", 
                          stringsAsFactors = FALSE)
 pupilSimpleRT = pupilSimpleRT[!is.na(pupilSimpleRT$PCA),]
 pupilSimpleRT = subset(pupilSimpleRT, vetsa2=='vetsa2')
@@ -174,7 +174,7 @@ grid.arrange(pctPcaPlot, residPcaPlot, ncol=2)
 
 
 ```{r, include=FALSE}
-pdf("K:/Experiments/Pupil_ReactionTime/results/Simple/PCAxLoad.pdf")
+pdf("K:/Projects/Pupil_ReactionTime/results/Simple/PCAxLoad.pdf")
 grid.arrange(pctPcaPlot, residPcaPlot, ncol=2)
 dev.off()
 ```
@@ -199,7 +199,7 @@ do.call(grid.arrange, c(plot_list, list(ncol=2)))
 ```
 
 ```{r, include=FALSE}
-pdf("K:/Experiments/Pupil_ReactionTime/results/Simple/rtHists.pdf")
+pdf("K:/Projects/Pupil_ReactionTime/results/Simple/rtHists.pdf")
 do.call(grid.arrange, c(plot_list, list(ncol=2)))
 dev.off()
 ```
@@ -238,7 +238,7 @@ for (i in 1:length(plot_list)) {
 plot_list$legend = legend
 
 #Save out plot
-pdf("K:/Experiments/Pupil_ReactionTime/results/Simple/PCAxLoadxSimpleRT_allGroups.pdf",width=12,height=10)
+pdf("K:/Projects/Pupil_ReactionTime/results/Simple/PCAxLoadxSimpleRT_allGroups.pdf",width=12,height=10)
 do.call(grid.arrange,  c(plot_list, list(ncol=2)))
 dev.off()
 ```
@@ -270,7 +270,7 @@ for (i in 1:length(plot_list)) {
 plot_list$legend = legend
 
 # Save out plot
-pdf("K:/Experiments/Pupil_ReactionTime/results/Simple/PCAxLoadxSimpleRT_Quartiles.pdf",width=12,height=10)
+pdf("K:/Projects/Pupil_ReactionTime/results/Simple/PCAxLoadxSimpleRT_Quartiles.pdf",width=12,height=10)
 do.call(grid.arrange,  c(plot_list, list(ncol=2)))
 dev.off()
 ```
@@ -440,7 +440,8 @@ lapply(lme.log_cvRT.loads, summary)
 ----------------------------
 Save out analysis dataset
 ```{r, include=FALSE}
-write.csv(pupilSimpleRT, "K:/Experiments/Pupil_ReactionTime/data/pupilDS_SimpleRT_AnalysisDataset.csv")
+write.csv(pupilSimpleRT, "K:/Projects/Pupil_ReactionTime/data/pupilDS_SimpleRT_AnalysisDataset.csv",
+          row.names = F)
 ```
 
 ```{r}

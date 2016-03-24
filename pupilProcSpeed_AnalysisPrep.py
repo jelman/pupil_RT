@@ -33,7 +33,7 @@ demodf = pd.read_csv(demo_fname)
 with SAS7BDAT(cogv2_fname) as f:
     cogdf = f.to_data_frame()
     
-cogdf = cogdf[['vetsaid','HADSHINJ_v2','NUMHINJ_v2']]
+cogdf = cogdf[['vetsaid','DSFMAX_v2','HADSHINJ_v2','NUMHINJ_v2']]
 
 # Set missing missing values in head injury variables
 cogdf.ix[cogdf['HADSHINJ_v2']==9,'HADSHINJ_v2'] = None

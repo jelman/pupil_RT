@@ -540,15 +540,16 @@ lapply(lme.diff.zProcSpeed.loads, summary)
 Run model (including MCI) testing interaction of Load with VETSA 2 Processing Speed cognitive domain
 ```{r}
 contrasts.facLoad.zProcSpeed_v2.MCI = rbind(
-    'Load3:zProcSpeed_v2 vs Load6:zProcSpeed_v2' = c(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,-1,0,0,0,0,0,0,0),
-    'Load6:zProcSpeed_v2 vs Load9:zProcSpeed_v2' = c(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0),
-    'Load3:zProcSpeed_v2 vs Load9:zProcSpeed_v2' = c(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,-1,1,0,0,0,0,0,0)
+    'Load3:zProcSpeed_v2 vs Load6:zProcSpeed_v2' = c(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,-1,0,0,0,0,0,0,0,0,0),
+    'Load6:zProcSpeed_v2 vs Load9:zProcSpeed_v2' = c(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0),
+    'Load3:zProcSpeed_v2 vs Load9:zProcSpeed_v2' = c(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,-1,1,0,0,0,0,0,0,0,0)
 )
 
 lme.facLoad.zProcSpeed_v2.MCI = lmer(residPCA ~ facLoad*(zProcSpeed_v2 + 
                                                         c.DSFMAX_v2 +
-                                                        rMCI_cons_bin) + 
-                                    apoe4 + c.age_v2 + site_v2rev + 
+                                                        rMCI_cons_bin +
+                                                        apoe4) + 
+                                    c.age_v2 + site_v2rev + 
                                     Device + acamedbin + c.nas201tran + 
                                     (1 | case/vetsaid), data=pupilProcSpeed)
 summary(lme.facLoad.zProcSpeed_v2.MCI)
@@ -579,8 +580,9 @@ contrasts.facLoad.zProcSpeed_v1.MCI = rbind(
 
 lme.facLoad.zProcSpeed_v1.MCI = lmer(residPCA ~ facLoad*(zProcSpeed_v1 + 
                                                         c.DSFMAX_v2 +
-                                                        rMCI_cons_bin) + 
-                                    apoe4 + c.age_v2 + site_v2rev + 
+                                                        rMCI_cons_bin +
+                                                        apoe4) + 
+                                    c.age_v2 + site_v2rev + 
                                     Device + acamedbin + c.nas201tran + 
                                     (1 | case/vetsaid), data=pupilProcSpeed)
 summary(lme.facLoad.zProcSpeed_v1.MCI)
@@ -687,6 +689,33 @@ p.MCI = summaryResidPCA.MCI %>%
                                           "Multi-Domain MCI"))
 print(p.MCI)
 ggsave("K:/Projects/Pupil_ReactionTime/results/pupilPS_MCI.pdf", p.MCI)
+```
+
+Plot pupil dilation by ApoE4 status
+```{r, echo=FALSE}
+summaryResidPCA.apoe4 = summarySEwithin(pupilProcSpeed, 
+                measurevar="residPCA", 
+                idvar="vetsaid", 
+                withinvars="Load",
+                betweenvars="apoe4",
+                na.rm=TRUE)
+# Filter out NA cases (the above function doesn't always do this)
+summaryResidPCA.apoe4 = summaryResidPCA.apoe4 %>% filter(complete.cases(.))
+
+p.apoe4 = summaryResidPCA.apoe4 %>%
+          ggplot(., aes(x=Load,y=residPCA,
+                        color=apoe4,
+                        group=apoe4)) +
+            geom_line() +
+            geom_errorbar(width=.1, aes(ymin=residPCA-ci,ymax=residPCA+ci)) +
+            ggtitle("ApoE4 Status") + theme_bw(16) +
+            ylab("Change in Pupil Diameter\n(Adjusted for Baseline)") +
+            scale_color_discrete(name="ApoE4 Status", 
+                                 labels=c("ApoE4-",
+                                          "ApoE4+",
+                                          "Multi-Domain MCI"))
+print(p.apoe4)
+ggsave("K:/Projects/Pupil_ReactionTime/results/pupilPS_apoe4.pdf", p.apoe4)
 ```
 ----------------------------
 

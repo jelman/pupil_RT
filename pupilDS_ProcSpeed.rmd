@@ -693,7 +693,7 @@ ggsave("K:/Projects/Pupil_ReactionTime/results/pupilPS_MCI.pdf", p.MCI)
 ```{r, include=FALSE}
 #Save out analysis dataset
 write.csv(pupilProcSpeed,
-          "K:/Projects/Pupil_ReactionTime/data/pupilDS_ChoiceRT_AnalysisDataset.csv",
+          "K:/Projects/Pupil_ReactionTime/data/pupilDS_ProcSpeed_AnalysisDataset.csv",
           row.names=F)
 ```
 

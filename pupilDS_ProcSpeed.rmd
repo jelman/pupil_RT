@@ -5,9 +5,6 @@ date: "`r Sys.Date()`"
 output: html_document
 ---
 
-```{r global_options, include=FALSE}
-knitr::opts_chunk$set(warning=FALSE, message=FALSE)
-```
 
 Load libraries
 ```{r results='hide', message=FALSE, warning=FALSE}
@@ -26,6 +23,11 @@ source("K:/code/summarySE.R")
 source("K:/code/normDataWithin.R")
 source("K:/code/summarySEwithin.R")
 source("K:/code/get_legend.R")
+```
+
+```{r global_options, include=FALSE}
+knitr::opts_chunk$set(warning=FALSE, message=FALSE)
+sjp.setTheme(theme=theme_bw())
 ```
 
 Load data.
@@ -76,7 +78,7 @@ c.subjDF$vetsaid = subjDF$vetsaid
 pupilProcSpeed = left_join(pupilProcSpeed, c.subjDF, by="vetsaid")
 
 # Plot centered data
-hist(c.subjDF[!names(c.subjDF) %in% c("vetsaid")])
+hist(c.subjDF[!names(c.subjDF) %in% c("vetsaid")], main="Histograms of subject data")
 
 # Create vectors of processing speed variables
 psVars = c("strwraw","strcraw","TRL2TRAN","TRL3TRAN",
@@ -85,8 +87,17 @@ psVarsV1 = paste0(psVars, "_v1")
 psVarsV2 = paste0(psVars, "_v2")
 psVarsV1V2 = c(psVarsV1, psVarsV2)
 
+# Create measures of processing speed change. (V1 - V2 scores)
+for (variable in psVars){
+  varDiff = paste0("diff.",variable)
+  varV1 = paste0(variable,"_v1")
+  varV2 = paste0(variable,"_v2")
+  pupilProcSpeed[[varDiff]] = pupilProcSpeed[[varV1]] - pupilProcSpeed[[varV2]]
+}
+diffVars = paste0("diff.",psVars)
+
 # Create quantile groups
-qVars = c("c.DSFMAX_v2",psVarsV1V2)
+qVars = c("c.DSFMAX_v2",psVarsV1V2,diffVars)
 new.qVars = qVars
 names(new.qVars) = paste0("q.",qVars)
 pupilProcSpeed = pupilProcSpeed %>%
@@ -106,26 +117,21 @@ pupilProcSpeed$residPCA = resid(lme.PCA.resid)
 ```{r, include=FALSE}
 #Create dataset with subject level variables to assess relationships with BOLD variance.
 
-subjDatChoiceRT = pupilProcSpeed %>% 
+subjDatProcSpeed = pupilProcSpeed %>% 
             dplyr::select(-contains("PCA"),-contains("Load")) %>%
             group_by(vetsaid) %>%
             summarise_each(funs(first))
-#write.csv(subjDatChoiceRT, "K:/Projects/Pupil_ReactionTime/data/ChoiceRT_subjDat.csv")
+#write.csv(subjDatProcSpeed, "K:/Projects/Pupil_ReactionTime/data/ChoiceRT_subjDat.csv")
 ```
 
 How many subjects?
 ```{r}
-n_distinct(subjDatChoiceRT$vetsaid)
-```
-
-How many attrition replacements?
-```{r}
-dplyr::count(subjDatChoiceRT, vetsa2)
+n_distinct(subjDatProcSpeed$vetsaid)
 ```
 
 How many twin pairs vs unpaired twins? 
 ```{r}
-subjDatChoiceRT %>%
+subjDatProcSpeed %>%
   group_by(case) %>%
   dplyr::summarise(n_twins = n_distinct(vetsaid)) %>%
   dplyr::count(n_twins)
@@ -134,11 +140,11 @@ subjDatChoiceRT %>%
 
 How many MZ and DZ pairs? (excludes unpaired subjects)
 ```{r}
-subjDatChoiceRT %>% 
+subjDatProcSpeed %>% 
   group_by(case) %>%
   mutate(n_twins = n_distinct(vetsaid)) %>%
   filter(n_twins > 1) %>%
-  dplyr::summarise(zyg = mean(zyg14)) %>%
+  dplyr::summarise(zyg = mean(zygos)) %>%
   group_by(zyg) %>%
   dplyr::count(zyg)
 ```
@@ -153,33 +159,33 @@ pupilProcSpeed %>%
 
 How many of each MCI group?
 ```{r}
-dplyr::count(subjDatChoiceRT, rMCI_cons_v2)
+dplyr::count(subjDatProcSpeed, rMCI_cons_v2)
 ```
 
 How many of each MCI group binned by single or multi-doman MCI?
 ```{r}
-dplyr::count(subjDatChoiceRT, rMCI_cons_bin)
+dplyr::count(subjDatProcSpeed, rMCI_cons_bin)
 ```
 
 Look at frequencies of MCI measures
 ```{r}
-mci.p1 = sjp.frq(subjDatChoiceRT$rMCI_cons_v2, 
+mci.p1 = sjp.frq(subjDatProcSpeed$rMCI_cons_v2, 
           title="MCI groups",
           axisLabels.x=c("Normal","Single Domain\nNon-amnestic",
                          "Single Domain\nAmnestic","Multi Domain\nNon-Amnestic",
                          "Multi Domain Amnestic"),
-          axisLimits.y = c(0,900))
+          axisLimits.y = c(0,1000))
 
-mci.p2 = sjp.frq(subjDatChoiceRT$rMCI_cons_bin, 
+mci.p2 = sjp.frq(subjDatProcSpeed$rMCI_cons_bin, 
           title="Binned MCI groups",
           axisLabels.x=c("Normal","Single Domain MCI","Multi Domain MCI"),
-          axisLimits.y = c(0,900))
+          axisLimits.y = c(0,1000))
 
 grid.arrange(mci.p1$plot,mci.p2$plot)
 ```
 
 ```{r, include=FALSE}
-pdf("K:/Projects/Pupil_ReactionTime/results/MCI_groups.pdf", width=8, height=6)
+pdf("K:/Projects/Pupil_ReactionTime/results/procSpeed_MCI_groups.pdf", width=8, height=6)
 grid.arrange(mci.p1$plot,mci.p2$plot)
 dev.off()
 ```
@@ -187,13 +193,13 @@ dev.off()
 Plot pctPCA and residPCA data to check for ceiling effects on pupil dilation
 ```{r}
 pctPcaPlot = ggplot(pupilProcSpeed, aes(x=pctPCA)) + 
-  geom_histogram(fill="steelblue3",color="black") + 
+  geom_histogram(fill="steelblue3",color="black",size=.4) + 
   facet_wrap(~ Load, nrow=3) + 
   ggtitle("Histogram of pctPCA by Load") + 
   xlab("% PCA") + theme_bw() 
 
 residPcaPlot = ggplot(pupilProcSpeed, aes(x=residPCA)) + 
-  geom_histogram(fill="steelblue3",color="black") + 
+  geom_histogram(fill="steelblue3",color="black",size=.4) + 
   facet_wrap(~ Load, nrow=3) + 
   ggtitle("Histogram of residPCA by Load") + 
   xlab("PCA (adjusted for baseline)") + theme_bw() 
@@ -203,23 +209,20 @@ grid.arrange(pctPcaPlot, residPcaPlot, ncol=2)
 
 
 ```{r, include=FALSE}
-pdf("K:/Projects/Pupil_ReactionTime/results/Choice/PCAxLoad.pdf")
+pdf("K:/Projects/Pupil_ReactionTime/results/procSpeed_PCAxLoad.pdf")
 grid.arrange(pctPcaPlot, residPcaPlot, ncol=2)
 dev.off()
 ```
 
-Plot histograms of RT measures
+Plot histograms of VETSA1 processing speed measures
 ```{r}
-rtSubset = pupilProcSpeed %>%
-  filter(Load==3) %>%
-  dplyr::select(log_meanRT, log_medianRT, 
-                log_stdRT, resid_log_stdRT, log_cvRT)
+psSubsetV1 = subjDatProcSpeed %>% dplyr::select(one_of(psVarsV1))
 
 plot_list = list()
-for (i in 1:ncol(rtSubset)) {
-  p = ggplot(rtSubset,aes_string(x = rtSubset[i])) +
-        geom_histogram(fill="steelblue3",color="black") + 
-        xlab(names(rtSubset[i])) + theme_bw()
+for (i in 1:ncol(psSubsetV1)) {
+  p = ggplot(psSubsetV1,aes_string(x = names(psSubsetV1)[i])) +
+        geom_histogram(fill="steelblue3",color="black",size=.4) + 
+        xlab(names(psSubsetV1[i])) + theme_bw()
   plot_list[[i]] = p
 }
 
@@ -228,18 +231,60 @@ do.call(grid.arrange, c(plot_list, list(ncol=2)))
 ```
 
 ```{r, include=FALSE}
-pdf("K:/Projects/Pupil_ReactionTime/results/Choice/rtHists.pdf")
+pdf("K:/Projects/Pupil_ReactionTime/results/procSpeed_psVarsV1_Hists.pdf")
 do.call(grid.arrange, c(plot_list, list(ncol=2)))
 dev.off()
 ```
 
-Plot pupil dilation of all RT measure quantile groups
+Plot histograms of VETSA2 processing speed measures
 ```{r}
-rtMeasures = c("log_meanRT","log_medianRT",
-               "log_stdRT","resid_log_stdRT","log_cvRT")
-measureList = list()
-for (measure in rtMeasures){
-  measureList[[measure]] = summarySEwithin(pupilProcSpeed, 
+psSubsetV2 = subjDatProcSpeed %>% dplyr::select(one_of(psVarsV1))
+
+plot_list = list()
+for (i in 1:ncol(psSubsetV2)) {
+  p = ggplot(psSubsetV2,aes_string(x = names(psSubsetV2)[i])) +
+        geom_histogram(fill="steelblue3",color="black",size=.4) + 
+        xlab(names(psSubsetV2[i])) + theme_bw()
+  plot_list[[i]] = p
+}
+
+
+do.call(grid.arrange, c(plot_list, list(ncol=2)))
+```
+
+```{r, include=FALSE}
+pdf("K:/Projects/Pupil_ReactionTime/results/procSpeed_psVarsV2_Hists.pdf")
+do.call(grid.arrange, c(plot_list, list(ncol=2)))
+dev.off()
+```
+
+Plot histograms of difference in processing speed measures between V1 & V2
+```{r}
+psSubsetV1V2diff = subjDatProcSpeed %>% dplyr::select(one_of(diffVars))
+
+plot_list = list()
+for (i in 1:ncol(psSubsetV1V2diff)) {
+  p = ggplot(psSubsetV1V2diff,aes_string(x = names(psSubsetV1V2diff)[i])) +
+        geom_histogram(fill="steelblue3",color="black",size=.4) + 
+        xlab(names(psSubsetV1V2diff[i])) + theme_bw()
+  plot_list[[i]] = p
+}
+
+
+do.call(grid.arrange, c(plot_list, list(ncol=2)))
+```
+
+```{r, include=FALSE}
+pdf("K:/Projects/Pupil_ReactionTime/results/procSpeed_psVarsV1V2diff_Hists.pdf")
+do.call(grid.arrange, c(plot_list, list(ncol=2)))
+dev.off()
+```
+
+Plot pupil dilation of all VETSA 1 processing speed quantile groups
+```{r}
+measureListV1 = list()
+for (measure in psVarsV1){
+  measureListV1[[measure]] = summarySEwithin(pupilProcSpeed, 
                 measurevar="residPCA", 
                 idvar="vetsaid", 
                 withinvars="Load", 
@@ -247,69 +292,114 @@ for (measure in rtMeasures){
                 na.rm=TRUE)
 }
 
-q.rtMeasures = paste("q",rtMeasures, sep=".")
-plot_list = list()
-for (i in 1:length(q.rtMeasures)) {
-  p = ggplot(measureList[[i]], aes_string(x="Load",y="residPCA", 
-                              color=q.rtMeasures[i], group=q.rtMeasures[i])) +
+# Filter out NA cases (the above function doesn't always do this)
+measureListV1 = lapply(measureListV1, function(df) df %>% filter(complete.cases(.)))
+
+q.psVarsV1 = paste("q",psVarsV1, sep=".")
+plot_listV1 = list()
+for (i in 1:length(q.psVarsV1)) {
+  p = ggplot(measureListV1[[i]], aes_string(x="Load",y="residPCA", 
+                              color=q.psVarsV1[i], group=q.psVarsV1[i])) +
     geom_line() + 
     geom_errorbar(width=.1, aes(ymin=residPCA-ci,ymax=residPCA+ci)) +
-    ggtitle(paste0("Pupil dilation by ",q.rtMeasures[i]," quantile")) +
+    ggtitle(paste0("Pupil dilation by ",q.psVarsV1[i]," quantile")) +
     theme_bw(14) + ylab("Change in Pupil Diameter\n(Adjusted for Baseline)") +
     scale_color_discrete(name="quantile")
-  plot_list[[i]] = p
+  plot_listV1[[i]] = p
 }
 
-legend = get_legend(plot_list[[1]])
-for (i in 1:length(plot_list)) {
-  plot_list[[i]] = plot_list[[i]] + theme(legend.position="none")
-}
-plot_list$legend = legend
+# legend = get_legend(plot_list[[1]])
+# for (i in 1:length(plot_list)) {
+#   plot_list[[i]] = plot_list[[i]] + theme(legend.position="none")
+# }
+# plot_list$legend = legend
 
 #Save out plot
-pdf("K:/Projects/Pupil_ReactionTime/results/Choice/PCAxLoadxChoiceRT_allGroups.pdf",width=12,height=10)
-do.call(grid.arrange,  c(plot_list, list(ncol=2)))
+pdf("K:/Projects/Pupil_ReactionTime/results/PCAxLoadxpsVarsV1_allGroups.pdf",width=15,height=12)
+do.call(grid.arrange,  c(plot_listV1, list(ncol=3)))
 dev.off()
 ```
 
-
-```{r, include=FALSE}
-#Plot pupil dilation of upper and lower RT measure quantile groups
-plot_list = list()
-for (i in 1:length(q.rtMeasures)) {
-  call <- substitute(filter(summarydf, target==1 | target==4),
-                         list(summarydf = measureList[[i]],
-                              target = as.name(q.rtMeasures[[i]]))) 
-  df = eval(call) 
-  p = ggplot(df, aes_string(x="Load",y="residPCA", 
-                              color=q.rtMeasures[i], group=q.rtMeasures[i])) +
-    geom_line(size=1) + 
-    geom_errorbar(width=.1, size=1, aes(ymin=residPCA-ci,ymax=residPCA+ci)) +
-    ggtitle(paste0("Pupil Response by Mean RT quantile")) +
-    theme_bw(20) + ylab("Change in Pupil Diameter\n(Adjusted for Baseline)") +
-    scale_color_discrete(name="log Mean RT\nquantile",
-                         labels=c("Lower","Upper")) +
-    theme(plot.title = element_text(size=28),
-          axis.title = element_text(size=28),
-          axis.text.x = element_text(size=24),
-          legend.justification=c(1,0), legend.position=c(1,0), 
-          legend.title = element_text(size=18, face="bold"),
-          legend.text = element_text(size=18))
-  plot_list[[i]] = p
+Plot pupil dilation of all VETSA 2 processing speed quantile groups
+```{r}
+measureListV1V2diff = list()
+for (measure in psVarsV2){
+  measureListV1V2diff[[measure]] = summarySEwithin(pupilProcSpeed, 
+                measurevar="residPCA", 
+                idvar="vetsaid", 
+                withinvars="Load", 
+                betweenvars=paste0("q.",measure),
+                na.rm=TRUE)
 }
 
-legend = get_legend(plot_list[[1]])
-for (i in 1:length(plot_list)) {
-  plot_list[[i]] = plot_list[[i]] + theme(legend.position="none")
-}
-plot_list$legend = legend
+# Filter out NA cases (the above function doesn't always do this)
+measureListV1V2diff = lapply(measureListV1V2diff, function(df) df %>% filter(complete.cases(.)))
 
-# Save out plot
-pdf("K:/Projects/Pupil_ReactionTime/results/Choice/PCAxLoadxChoiceRT_Quartiles.pdf",width=12,height=10)
-do.call(grid.arrange,  c(plot_list, list(ncol=2)))
+q.psVarsV2 = paste("q",psVarsV2, sep=".")
+plot_listV2 = list()
+for (i in 1:length(q.psVarsV2)) {
+  p = ggplot(measureListV1V2diff[[i]], aes_string(x="Load",y="residPCA", 
+                              color=q.psVarsV2[i], group=q.psVarsV2[i])) +
+    geom_line() + 
+    geom_errorbar(width=.1, aes(ymin=residPCA-ci,ymax=residPCA+ci)) +
+    ggtitle(paste0("Pupil dilation by ",q.psVarsV2[i]," quantile")) +
+    theme_bw(14) + ylab("Change in Pupil Diameter\n(Adjusted for Baseline)") +
+    scale_color_discrete(name="quantile")
+  plot_listV2[[i]] = p
+}
+
+# legend = get_legend(plot_list[[1]])
+# for (i in 1:length(plot_list)) {
+#   plot_list[[i]] = plot_list[[i]] + theme(legend.position="none")
+# }
+# plot_list$legend = legend
+
+#Save out plot
+pdf("K:/Projects/Pupil_ReactionTime/results/PCAxLoadxpsVarsV2_allGroups.pdf",width=15,height=12)
+do.call(grid.arrange,  c(plot_listV2, list(ncol=3)))
 dev.off()
 ```
 
+Plot pupil dilation of all processing speed change (v2 - V1) quantile groups
+```{r}
+measureListV1V2diff = list()
+for (measure in diffVars){
+  measureListV1V2diff[[measure]] = summarySEwithin(pupilProcSpeed, 
+                measurevar="residPCA", 
+                idvar="vetsaid", 
+                withinvars="Load", 
+                betweenvars=paste0("q.",measure),
+                na.rm=TRUE)
+}
+
+# Filter out NA cases (the above function doesn't always do this)
+measureListV1V2diff = lapply(measureListV1V2diff, function(df) df %>% filter(complete.cases(.)))
+
+q.diffVars = paste("q",diffVars, sep=".")
+plot_listV1V2diff = list()
+for (i in 1:length(q.diffVars)) {
+  p = ggplot(measureListV1V2diff[[i]], aes_string(x="Load",y="residPCA", 
+                              color=q.diffVars[i], group=q.diffVars[i])) +
+    geom_line() + 
+    geom_errorbar(width=.1, aes(ymin=residPCA-ci,ymax=residPCA+ci)) +
+    ggtitle(paste0("Pupil dilation by ",q.diffVars[i]," quantile")) +
+    theme_bw(14) + ylab("Change in Pupil Diameter\n(Adjusted for Baseline)") +
+    scale_color_discrete(name="quantile")
+  plot_listV1V2diff[[i]] = p
+}
+
+# legend = get_legend(plot_list[[1]])
+# for (i in 1:length(plot_list)) {
+#   plot_list[[i]] = plot_list[[i]] + theme(legend.position="none")
+# }
+# plot_list$legend = legend
+
+#Save out plot
+pdf("K:/Projects/Pupil_ReactionTime/results/PCAxLoadxpsVarsV1V2diff_allGroups.pdf",
+    width=15,height=12)
+do.call(grid.arrange,  c(plot_listV1V2diff, list(ncol=3)))
+dev.off()
+```
 -------------------------------
 # Mixed Effects Models: Cognitively normal only
 
@@ -318,300 +408,229 @@ dev.off()
 loads = c(3,6,9)
 ```
 
-**Log Mean RT**
+**zProcSpeed_v2**
 ```{r, echo=FALSE}
-plot_list[[1]]
+plot_listV2[[9]]
 ```
 
-Run basic model testing interaction of Load with log mean RT
+Run basic model testing interaction of Load with VETSA 2 Processing Speed cognitive domain
 ```{r}
-contrasts.facLoad.log_meanRT = rbind(
-    'Load3:log_meanRT vs Load6:log_meanRT' = c(0,0,0,0,0,0,0,0,0,0,0,0,-1,0,0,0),
-    'Load6:log_meanRT vs Load9:log_meanRT' = c(0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0),
-    'Load3:log_meanRT vs Load9:log_meanRT' = c(0,0,0,0,0,0,0,0,0,0,0,0,-1,1,0,0)
+contrasts.facLoad.zProcSpeed_v2 = rbind(
+    'Load3:zProcSpeed_v2 vs Load6:zProcSpeed_v2' = c(0,0,0,0,0,0,0,0,0,0,0,0,0,-1,0,0,0),
+    'Load6:zProcSpeed_v2 vs Load9:zProcSpeed_v2' = c(0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0),
+    'Load3:zProcSpeed_v2 vs Load9:zProcSpeed_v2' = c(0,0,0,0,0,0,0,0,0,0,0,0,0,-1,1,0,0)
 )
-lme.facLoad.log_meanRT = lmer(residPCA ~ facLoad*(log_meanRT + c.DSFMAX_v2) + 
+lme.facLoad.zProcSpeed_v2 = lmer(residPCA ~ facLoad*(zProcSpeed_v2 + c.DSFMAX_v2) + 
                                 apoe4 + c.age_v2 + site_v2rev + Device + 
-                                acamedbin + c.afqtpcttran_v2 + 
+                                acamedbin + c.nas201tran + 
                                 (1 | case/vetsaid),
                                 data=subset(pupilProcSpeed,rMCI_cons_bin==0))
-summary(lme.facLoad.log_meanRT)
-summary(glht(lme.facLoad.log_meanRT, contrasts.facLoad.log_meanRT), 
+summary(lme.facLoad.zProcSpeed_v2)
+summary(glht(lme.facLoad.zProcSpeed_v2, contrasts.facLoad.zProcSpeed_v2), 
               test = adjusted("none"))
 ```
 
-Test for differences based on mean RT within each level of Load
+Test for differences based on VETSA 1 Processing Speed cognitive domain within each level of Load
 ```{r}
-lme.log_meanRT.loads <- lapply(loads, function(x) {
-    lmer(residPCA ~ log_meanRT + apoe4 + c.age_v2 + site_v2rev + 
-                    Device + acamedbin + c.DSFMAX_v2 + c.afqtpcttran_v2 + 
+lme.zProcSpeed_v2.loads <- lapply(loads, function(x) {
+    lmer(residPCA ~ zProcSpeed_v2 + apoe4 + c.age_v2 + site_v2rev + 
+                    Device + acamedbin + c.DSFMAX_v2 + c.nas201tran + 
                     (1 | case), data=subset(pupilProcSpeed,Load==x &
                                               rMCI_cons_bin==0))
 })
-lapply(lme.log_meanRT.loads, summary)
+lapply(lme.zProcSpeed_v2.loads, summary)
 ```
 
-**Log Median RT**
+**zProcSpeed_v1**
 ```{r, echo=FALSE}
-plot_list[[2]]
+plot_listV1[[9]]
 ```
 
-Run basic model testing interaction of Load with log median RT
+Run basic model testing interaction of Load with VETSA 1 Processing Speed cognitive domain
 ```{r}
-contrasts.facLoad.log_medianRT = rbind(
-    'Load3:log_medianRT vs Load6:log_medianRT' = c(0,0,0,0,0,0,0,0,0,0,0,0,-1,0,0,0),
-    'Load6:log_medianRT vs Load9:log_medianRT' = c(0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0),
-    'Load3:log_medianRT vs Load9:log_medianRT' = c(0,0,0,0,0,0,0,0,0,0,0,0,-1,1,0,0)
+contrasts.facLoad.zProcSpeed_v1 = rbind(
+    'Load3:zProcSpeed_v1 vs Load6:zProcSpeed_v1' = c(0,0,0,0,0,0,0,0,0,0,0,0,0,-1,0,0,0),
+    'Load6:zProcSpeed_v1 vs Load9:zProcSpeed_v1' = c(0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0),
+    'Load3:zProcSpeed_v1 vs Load9:zProcSpeed_v1' = c(0,0,0,0,0,0,0,0,0,0,0,0,0,-1,1,0,0)
 )
-lme.facLoad.log_medianRT = lmer(residPCA ~ facLoad*(log_medianRT + c.DSFMAX_v2) + 
+lme.facLoad.zProcSpeed_v1 = lmer(residPCA ~ facLoad*(zProcSpeed_v1 + c.DSFMAX_v2) + 
                                 apoe4 + c.age_v2 + site_v2rev + Device + 
-                                acamedbin + c.afqtpcttran_v2 + 
+                                acamedbin + c.nas201tran + 
                                 (1 | case/vetsaid),
                                 data=subset(pupilProcSpeed,rMCI_cons_bin==0))
-summary(lme.facLoad.log_medianRT)
-summary(glht(lme.facLoad.log_medianRT, contrasts.facLoad.log_medianRT), 
+summary(lme.facLoad.zProcSpeed_v1)
+summary(glht(lme.facLoad.zProcSpeed_v1, contrasts.facLoad.zProcSpeed_v1), 
               test = adjusted("none"))
 ```
 
-Test for differences based on median RT within each level of Load
+Test for differences based on VETSA 1 Processing Speed cognitive domain within each level of Load
 ```{r}
-lme.log_medianRT.loads <- lapply(loads, function(x) {
-    lmer(residPCA ~ log_medianRT + apoe4 + c.age_v2 + site_v2rev + 
-                    Device + acamedbin + c.DSFMAX_v2 + c.afqtpcttran_v2 + 
-                    (1 | case), data=subset(pupilProcSpeed,Load==x & 
-                                              rMCI_cons_bin==0))
-})
-lapply(lme.log_medianRT.loads, summary)
-```
-
-**Log Standard Deviation RT**
-```{r, echo=FALSE}
-plot_list[[3]]
-```
-
-Run basic model testing interaction of Load with log standard deviation RT
-```{r}
-contrasts.facLoad.log_stdRT = rbind(
-    'Load3:log_stdRT vs Load6:log_stdRT' = c(0,0,0,0,0,0,0,0,0,0,0,0,-1,0,0,0),
-    'Load6:log_stdRT vs Load9:log_stdRT' = c(0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0),
-    'Load3:log_stdRT vs Load9:log_stdRT' = c(0,0,0,0,0,0,0,0,0,0,0,0,-1,1,0,0)
-)
-lme.facLoad.log_stdRT = lmer(residPCA ~ facLoad*(log_stdRT + c.DSFMAX_v2) + 
-                                apoe4 + c.age_v2 + site_v2rev + Device + 
-                                acamedbin + c.afqtpcttran_v2 + 
-                                (1 | case/vetsaid),
-                                data=subset(pupilProcSpeed,rMCI_cons_bin==0))
-summary(lme.facLoad.log_stdRT)
-summary(glht(lme.facLoad.log_stdRT, contrasts.facLoad.log_stdRT), 
-              test = adjusted("none"))
-```
-
-Test for differences based on standard deviation RT within each level of Load
-```{r}
-lme.log_stdRT.loads <- lapply(loads, function(x) {
-    lmer(residPCA ~ log_stdRT + apoe4 + c.age_v2 + site_v2rev + 
-                    Device + acamedbin + c.DSFMAX_v2 + c.afqtpcttran_v2 + 
-                    (1 | case), data=subset(pupilProcSpeed,Load==x & 
-                                              rMCI_cons_bin==0))
-})
-lapply(lme.log_stdRT.loads, summary)
-```
-
-**Log Residual Standard Deviation RT**
-```{r, echo=FALSE}
-plot_list[[4]]
-```
-
-Run basic model testing interaction of Load with residual log standard deviation RT
-```{r}
-contrasts.facLoad.resid_log_stdRT = rbind(
-    'Load3:resid_log_stdRT vs Load6:resid_log_stdRT' = c(0,0,0,0,0,0,0,0,0,0,0,0,-1,0,0,0),
-    'Load6:resid_log_stdRT vs Load9:resid_log_stdRT' = c(0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0),
-    'Load3:resid_log_stdRT vs Load9:resid_log_stdRT' = c(0,0,0,0,0,0,0,0,0,0,0,0,-1,1,0,0)
-)
-lme.facLoad.resid_log_stdRT = lmer(residPCA ~ facLoad*(resid_log_stdRT + c.DSFMAX_v2) + 
-                                apoe4 + c.age_v2 + site_v2rev + Device + 
-                                acamedbin + c.afqtpcttran_v2 + 
-                                (1 | case/vetsaid),
-                                data=subset(pupilProcSpeed,rMCI_cons_bin==0))
-summary(lme.facLoad.resid_log_stdRT)
-summary(glht(lme.facLoad.resid_log_stdRT, contrasts.facLoad.resid_log_stdRT), 
-              test = adjusted("none"))
-```
-
-Test for differences based on residual standard deviation RT within each level of Load
-```{r}
-lme.resid_log_stdRT.loads <- lapply(loads, function(x) {
-    lmer(residPCA ~ resid_log_stdRT + apoe4 + c.age_v2 + site_v2rev + 
-                    Device + acamedbin + c.DSFMAX_v2 + c.afqtpcttran_v2 + 
-                    (1 | case), data=subset(pupilProcSpeed,Load==x & 
-                                              rMCI_cons_bin==0))
-})
-lapply(lme.resid_log_stdRT.loads, summary)
-```
-
-**Log Coefficient of Variation RT**
-```{r, echo=FALSE}
-plot_list[[5]]
-```
-
-Run basic model testing interaction of Load with log coeffient of variance RT
-```{r}
-contrasts.facLoad.log_cvRT = rbind(
-    'Load3:log_cvRT vs Load6:log_cvRT' = c(0,0,0,0,0,0,0,0,0,0,0,0,-1,0,0,0),
-    'Load6:log_cvRT vs Load9:log_cvRT' = c(0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0),
-    'Load3:log_cvRT vs Load9:log_cvRT' = c(0,0,0,0,0,0,0,0,0,0,0,0,-1,1,0,0)
-)
-lme.facLoad.log_cvRT = lmer(residPCA ~ facLoad*(log_cvRT + c.DSFMAX_v2) + 
-                                apoe4 + c.age_v2 + site_v2rev + Device + 
-                                acamedbin + c.afqtpcttran_v2 + 
-                                (1 | case/vetsaid),
-                                data=subset(pupilProcSpeed,rMCI_cons_bin==0))
-summary(lme.facLoad.log_cvRT)
-summary(glht(lme.facLoad.log_cvRT, contrasts.facLoad.log_cvRT), 
-              test = adjusted("none"))
-```
-
-Test for differences based on coeffiecient of variation RT within each level of Load
-```{r}
-lme.log_cvRT.loads <- lapply(loads, function(x) {
-    lmer(residPCA ~ log_cvRT + apoe4 + c.age_v2 + site_v2rev + 
-                    Device + acamedbin + c.DSFMAX_v2 + c.afqtpcttran_v2 + 
+lme.zProcSpeed_v1.loads <- lapply(loads, function(x) {
+    lmer(residPCA ~ zProcSpeed_v1 + apoe4 + c.age_v2 + site_v2rev + 
+                    Device + acamedbin + c.DSFMAX_v2 + c.nas201tran + 
                     (1 | case), data=subset(pupilProcSpeed,Load==x &
                                               rMCI_cons_bin==0))
 })
-lapply(lme.log_cvRT.loads, summary)
+lapply(lme.zProcSpeed_v1.loads, summary)
 ```
 
+Run basic model testing interaction of Load with VETSA 1 Processing Speed cognitive domain
+```{r}
+contrasts.facLoad.zProcSpeed_v1 = rbind(
+    'Load3:zProcSpeed_v1 vs Load6:zProcSpeed_v1' = c(0,0,0,0,0,0,0,0,0,0,0,0,0,-1,0,0,0),
+    'Load6:zProcSpeed_v1 vs Load9:zProcSpeed_v1' = c(0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0),
+    'Load3:zProcSpeed_v1 vs Load9:zProcSpeed_v1' = c(0,0,0,0,0,0,0,0,0,0,0,0,0,-1,1,0,0)
+)
+lme.facLoad.zProcSpeed_v1 = lmer(residPCA ~ facLoad*(zProcSpeed_v1 + c.DSFMAX_v2) + 
+                                apoe4 + c.age_v2 + site_v2rev + Device + 
+                                acamedbin + c.nas201tran + 
+                                (1 | case/vetsaid),
+                                data=subset(pupilProcSpeed,rMCI_cons_bin==0))
+summary(lme.facLoad.zProcSpeed_v1)
+summary(glht(lme.facLoad.zProcSpeed_v1, contrasts.facLoad.zProcSpeed_v1), 
+              test = adjusted("none"))
+```
+
+Test for differences based on VETSA 1 Processing Speed cognitive domain within each level of Load
+```{r}
+lme.zProcSpeed_v1.loads <- lapply(loads, function(x) {
+    lmer(residPCA ~ zProcSpeed_v1 + apoe4 + c.age_v2 + site_v2rev + 
+                    Device + acamedbin + c.DSFMAX_v2 + c.nas201tran + 
+                    (1 | case), data=subset(pupilProcSpeed,Load==x &
+                                              rMCI_cons_bin==0))
+})
+lapply(lme.zProcSpeed_v1.loads, summary)
+```
+
+**diff.zProcSpeed**
+```{r, echo=FALSE}
+plot_listV1V2diff[[9]]
+```
+
+Run basic model testing interaction of Load with difference between VETSA 1 & 2 Processing Speed cognitive domain
+```{r}
+contrasts.facLoad.diff.zProcSpeed = rbind(
+    'Load3:diff.zProcSpeed vs Load6:diff.zProcSpeed' = c(0,0,0,0,0,0,0,0,0,0,0,0,0,-1,0,0,0),
+    'Load6:diff.zProcSpeed vs Load9:diff.zProcSpeed' = c(0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0),
+    'Load3:diff.zProcSpeed vs Load9:diff.zProcSpeed' = c(0,0,0,0,0,0,0,0,0,0,0,0,0,-1,1,0,0)
+)
+lme.facLoad.diff.zProcSpeed = lmer(residPCA ~ facLoad*(diff.zProcSpeed + c.DSFMAX_v2) + 
+                                apoe4 + c.age_v2 + site_v2rev + Device + 
+                                acamedbin + c.nas201tran + 
+                                (1 | case/vetsaid),
+                                data=subset(pupilProcSpeed,rMCI_cons_bin==0))
+summary(lme.facLoad.diff.zProcSpeed)
+summary(glht(lme.facLoad.diff.zProcSpeed, contrasts.facLoad.diff.zProcSpeed), 
+              test = adjusted("none"))
+```
+
+Test for differences based on difference between VETSA 1 & 2 Processing Speed cognitive domain within each level of Load
+```{r}
+lme.diff.zProcSpeed.loads <- lapply(loads, function(x) {
+    lmer(residPCA ~ diff.zProcSpeed + apoe4 + c.age_v2 + site_v2rev + 
+                    Device + acamedbin + c.DSFMAX_v2 + c.nas201tran + 
+                    (1 | case), data=subset(pupilProcSpeed,Load==x &
+                                              rMCI_cons_bin==0))
+})
+lapply(lme.diff.zProcSpeed.loads, summary)
+```
 ----------------
 # Mixed Effects Models: All MCI groups
 
-Run model testing interaction of Load with log mean RT, digit span and MCI
+Run model (including MCI) testing interaction of Load with VETSA 2 Processing Speed cognitive domain
 ```{r}
-contrasts.facLoad.log_meanRT.MCI = rbind(
-    'Load3:log_meanRT vs Load6:log_meanRT' = c(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,-1,0,0,0,0,0,0,0),
-    'Load6:log_meanRT vs Load9:log_meanRT' = c(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0),
-    'Load3:log_meanRT vs Load9:log_meanRT' = c(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,-1,1,0,0,0,0,0,0)
+contrasts.facLoad.zProcSpeed_v2.MCI = rbind(
+    'Load3:zProcSpeed_v2 vs Load6:zProcSpeed_v2' = c(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,-1,0,0,0,0,0,0,0),
+    'Load6:zProcSpeed_v2 vs Load9:zProcSpeed_v2' = c(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0),
+    'Load3:zProcSpeed_v2 vs Load9:zProcSpeed_v2' = c(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,-1,1,0,0,0,0,0,0)
 )
 
-lme.facLoad.log_meanRT.MCI = lmer(residPCA ~ facLoad*(log_meanRT + 
+lme.facLoad.zProcSpeed_v2.MCI = lmer(residPCA ~ facLoad*(zProcSpeed_v2 + 
                                                         c.DSFMAX_v2 +
                                                         rMCI_cons_bin) + 
                                     apoe4 + c.age_v2 + site_v2rev + 
-                                    Device + acamedbin + c.afqtpcttran_v2 + 
+                                    Device + acamedbin + c.nas201tran + 
                                     (1 | case/vetsaid), data=pupilProcSpeed)
-summary(lme.facLoad.log_meanRT.MCI)
-summary(glht(lme.facLoad.log_meanRT.MCI, 
-             contrasts.facLoad.log_meanRT.MCI),
+summary(lme.facLoad.zProcSpeed_v2.MCI)
+summary(glht(lme.facLoad.zProcSpeed_v2.MCI, 
+             contrasts.facLoad.zProcSpeed_v2.MCI),
              test = adjusted("none"))
 ```
 
-Test for differences based on mean RT within each level of Load
+Test for differences (including MCI) based on VETSA 2 Processing Speed cognitive domain within each level of Load
 ```{r}
-lme.log_meanRT.loads.MCI <- lapply(loads, function(x) {
-    lmer(residPCA ~ log_meanRT + apoe4 + c.age_v2 + site_v2rev + 
+lme.zProcSpeed_v2.loads.MCI <- lapply(loads, function(x) {
+    lmer(residPCA ~ zProcSpeed_v2 + apoe4 + c.age_v2 + site_v2rev + 
                     Device + acamedbin + c.DSFMAX_v2 + 
-                    rMCI_cons_bin + c.afqtpcttran_v2 + 
+                    rMCI_cons_bin + c.nas201tran + 
                     (1 | case), 
          data=filter(pupilProcSpeed, Load==x))
 })
-lapply(lme.log_meanRT.loads.MCI, summary)
+lapply(lme.zProcSpeed_v2.loads.MCI, summary)
 ```
 
-Run model testing interaction of Load with log median RT, digit span and MCI
+Run  model (including MCI) testing interaction of Load with VETSA 1 Processing Speed cognitive domain
 ```{r}
-contrasts.facLoad.log_medianRT.MCI = rbind(
-    'Load3:log_medianRT vs Load6:log_medianRT' = c(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,-1,0,0,0,0,0,0,0),
-    'Load6:log_medianRT vs Load9:log_medianRT' = c(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0),
-    'Load3:log_medianRT vs Load9:log_medianRT' = c(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,-1,1,0,0,0,0,0,0)
+contrasts.facLoad.zProcSpeed_v1.MCI = rbind(
+    'Load3:zProcSpeed_v1 vs Load6:zProcSpeed_v1' = c(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,-1,0,0,0,0,0,0,0),
+    'Load6:zProcSpeed_v1 vs Load9:zProcSpeed_v1' = c(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0),
+    'Load3:zProcSpeed_v1 vs Load9:zProcSpeed_v1' = c(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,-1,1,0,0,0,0,0,0)
 )
 
-lme.facLoad.log_medianRT.MCI = lmer(residPCA ~ facLoad*(log_medianRT + 
+lme.facLoad.zProcSpeed_v1.MCI = lmer(residPCA ~ facLoad*(zProcSpeed_v1 + 
                                                         c.DSFMAX_v2 +
                                                         rMCI_cons_bin) + 
                                     apoe4 + c.age_v2 + site_v2rev + 
-                                    Device + acamedbin + c.afqtpcttran_v2 + 
+                                    Device + acamedbin + c.nas201tran + 
                                     (1 | case/vetsaid), data=pupilProcSpeed)
-summary(lme.facLoad.log_medianRT.MCI)
-summary(glht(lme.facLoad.log_medianRT.MCI, 
-             contrasts.facLoad.log_medianRT.MCI),
+summary(lme.facLoad.zProcSpeed_v1.MCI)
+summary(glht(lme.facLoad.zProcSpeed_v1.MCI, 
+             contrasts.facLoad.zProcSpeed_v1.MCI),
              test = adjusted("none"))
 ```
 
-Test for differences based on median RT within each level of Load
+Test for differences (including MCI) based on VETSA 1 Processing Speed cognitive domain within each level of Load
 ```{r}
-lme.log_medianRT.loads.MCI <- lapply(loads, function(x) {
-    lmer(residPCA ~ log_medianRT + apoe4 + c.age_v2 + site_v2rev + 
+lme.zProcSpeed_v1.loads.MCI <- lapply(loads, function(x) {
+    lmer(residPCA ~ zProcSpeed_v1 + apoe4 + c.age_v2 + site_v2rev + 
                     Device + acamedbin + c.DSFMAX_v2 + 
-                    rMCI_cons_bin + c.afqtpcttran_v2 + 
+                    rMCI_cons_bin + c.nas201tran + 
                     (1 | case), 
          data=filter(pupilProcSpeed, Load==x))
 })
-lapply(lme.log_medianRT.loads.MCI, summary)
+lapply(lme.zProcSpeed_v1.loads.MCI, summary)
 ```
 
-Run model testing interaction of Load with log std RT, digit span and MCI
+Run  model (including MCI) testing interaction of Load with difference between VETSA 1 & 2 Processing Speed cognitive domain
 ```{r}
-contrasts.facLoad.log_stdRT.MCI = rbind(
-    'Load3:log_stdRT vs Load6:log_stdRT' = c(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,-1,0,0,0,0,0,0,0),
-    'Load6:log_stdRT vs Load9:log_stdRT' = c(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0),
-    'Load3:log_stdRT vs Load9:log_stdRT' = c(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,-1,1,0,0,0,0,0,0)
+contrasts.facLoad.diff.zProcSpeed.MCI = rbind(
+    'Load3:diff.zProcSpeed vs Load6:diff.zProcSpeed' = c(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,-1,0,0,0,0,0,0,0),
+    'Load6:diff.zProcSpeed vs Load9:diff.zProcSpeed' = c(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0),
+    'Load3:diff.zProcSpeed vs Load9:diff.zProcSpeed' = c(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,-1,1,0,0,0,0,0,0)
 )
 
-lme.facLoad.log_stdRT.MCI = lmer(residPCA ~ facLoad*(log_stdRT + 
+lme.facLoad.diff.zProcSpeed.MCI = lmer(residPCA ~ facLoad*(diff.zProcSpeed + 
                                                         c.DSFMAX_v2 +
                                                         rMCI_cons_bin) + 
                                     apoe4 + c.age_v2 + site_v2rev + 
-                                    Device + acamedbin + c.afqtpcttran_v2 + 
+                                    Device + acamedbin + c.nas201tran + 
                                     (1 | case/vetsaid), data=pupilProcSpeed)
-summary(lme.facLoad.log_stdRT.MCI)
-summary(glht(lme.facLoad.log_stdRT.MCI, 
-             contrasts.facLoad.log_stdRT.MCI),
+summary(lme.facLoad.diff.zProcSpeed.MCI)
+summary(glht(lme.facLoad.diff.zProcSpeed.MCI, 
+             contrasts.facLoad.diff.zProcSpeed.MCI),
              test = adjusted("none"))
 ```
 
-Test for differences based on std RT within each level of Load
+Test for differences (including MCI) based on difference between VETSA 1 & 2 Processing Speed cognitive domain within each level of Load
 ```{r}
-lme.log_stdRT.loads.MCI <- lapply(loads, function(x) {
-    lmer(residPCA ~ log_stdRT + apoe4 + c.age_v2 + site_v2rev + 
+lme.diff.zProcSpeed.loads.MCI <- lapply(loads, function(x) {
+    lmer(residPCA ~ diff.zProcSpeed + apoe4 + c.age_v2 + site_v2rev + 
                     Device + acamedbin + c.DSFMAX_v2 + 
-                    rMCI_cons_bin + c.afqtpcttran_v2 + 
+                    rMCI_cons_bin + c.nas201tran + 
                     (1 | case), 
          data=filter(pupilProcSpeed, Load==x))
 })
-lapply(lme.log_stdRT.loads.MCI, summary)
-```
-
-Run model testing interaction of Load with log cv RT, digit span and MCI
-```{r}
-contrasts.facLoad.log_cvRT.MCI = rbind(
-    'Load3:log_cvRT vs Load6:log_cvRT' = c(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,-1,0,0,0,0,0,0,0),
-    'Load6:log_cvRT vs Load9:log_cvRT' = c(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0),
-    'Load3:log_cvRT vs Load9:log_cvRT' = c(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,-1,1,0,0,0,0,0,0)
-)
-
-lme.facLoad.log_cvRT.MCI = lmer(residPCA ~ facLoad*(log_cvRT + 
-                                                        c.DSFMAX_v2 +
-                                                        rMCI_cons_bin) + 
-                                    apoe4 + c.age_v2 + site_v2rev + 
-                                    Device + acamedbin + c.afqtpcttran_v2 + 
-                                    (1 | case/vetsaid), data=pupilProcSpeed)
-summary(lme.facLoad.log_cvRT.MCI)
-summary(glht(lme.facLoad.log_cvRT.MCI, 
-             contrasts.facLoad.log_cvRT.MCI),
-             test = adjusted("none"))
-```
-
-Test for differences based on cv RT within each level of Load
-```{r}
-lme.log_cvRT.loads.MCI <- lapply(loads, function(x) {
-    lmer(residPCA ~ log_cvRT + apoe4 + c.age_v2 + site_v2rev + 
-                    Device + acamedbin + c.DSFMAX_v2 + 
-                    rMCI_cons_bin + c.afqtpcttran_v2 + 
-                    (1 | case), 
-         data=filter(pupilProcSpeed, Load==x))
-})
-lapply(lme.log_cvRT.loads.MCI, summary)
+lapply(lme.diff.zProcSpeed.loads.MCI, summary)
 ```
 
 ----------------------------
@@ -625,6 +644,8 @@ summaryResidPCA.DSFMAX_v2 = summarySEwithin(pupilProcSpeed,
                 withinvars="Load",
                 betweenvars="q.c.DSFMAX_v2",
                 na.rm=TRUE)
+# Filter out NA cases (the above function doesn't always do this)
+summaryResidPCA.DSFMAX_v2 = summaryResidPCA.DSFMAX_v2 %>% filter(complete.cases(.))
   
 p.DSFMAX_v2 = summaryResidPCA.DSFMAX_v2 %>%
           filter(q.c.DSFMAX_v2==1 | q.c.DSFMAX_v2==4) %>%
@@ -638,7 +659,7 @@ p.DSFMAX_v2 = summaryResidPCA.DSFMAX_v2 %>%
             scale_color_discrete(name="Max digit span\nquantile",
                                  labels=c("Lower","Upper"))
 print(p.DSFMAX_v2)
-ggsave("K:/Projects/Pupil_ReactionTime/results/pupil_MaxDigitSpan.pdf", p.DSFMAX_v2)
+ggsave("K:/Projects/Pupil_ReactionTime/results/pupilPS_MaxDigitSpan.pdf", p.DSFMAX_v2)
 ```
 
 Plot pupil dilation by digit span max quantile
@@ -649,7 +670,9 @@ summaryResidPCA.MCI = summarySEwithin(pupilProcSpeed,
                 withinvars="Load",
                 betweenvars="rMCI_cons_bin",
                 na.rm=TRUE)
-  
+# Filter out NA cases (the above function doesn't always do this)
+summaryResidPCA.MCI = summaryResidPCA.MCI %>% filter(complete.cases(.))
+
 p.MCI = summaryResidPCA.MCI %>%
           ggplot(., aes(x=Load,y=residPCA,
                         color=rMCI_cons_bin,
@@ -663,7 +686,7 @@ p.MCI = summaryResidPCA.MCI %>%
                                           "Single Domain MCI",
                                           "Multi-Domain MCI"))
 print(p.MCI)
-ggsave("K:/AX-CPT/results/pupil_MCI.pdf", p.MCI)
+ggsave("K:/Projects/Pupil_ReactionTime/results/pupilPS_MCI.pdf", p.MCI)
 ```
 ----------------------------
 

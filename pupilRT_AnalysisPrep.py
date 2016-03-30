@@ -45,7 +45,7 @@ cogdf.to_csv(cog_outfile, index=False)
 
 # Load pupil data
 pupildf = pd.read_csv(pupil_fname)
-pupildf = pupildf.drop(['case', 'twin', 'zyg14', 'age_v2'], axis=1)
+pupildf = pupildf.drop(['case', 'twin', 'zyg14'], axis=1)
 
 # Load Reaction Time data
 RTdf = pd.read_csv(rt_fname)

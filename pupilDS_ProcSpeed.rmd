@@ -322,9 +322,9 @@ dev.off()
 
 Plot pupil dilation of all VETSA 2 processing speed quantile groups
 ```{r}
-measureListV1V2diff = list()
+measureListV2 = list()
 for (measure in psVarsV2){
-  measureListV1V2diff[[measure]] = summarySEwithin(pupilProcSpeed, 
+  measureListV2[[measure]] = summarySEwithin(pupilProcSpeed, 
                 measurevar="residPCA", 
                 idvar="vetsaid", 
                 withinvars="Load", 
@@ -333,12 +333,12 @@ for (measure in psVarsV2){
 }
 
 # Filter out NA cases (the above function doesn't always do this)
-measureListV1V2diff = lapply(measureListV1V2diff, function(df) df %>% filter(complete.cases(.)))
+measureListV2 = lapply(measureListV2, function(df) df %>% filter(complete.cases(.)))
 
 q.psVarsV2 = paste("q",psVarsV2, sep=".")
 plot_listV2 = list()
 for (i in 1:length(q.psVarsV2)) {
-  p = ggplot(measureListV1V2diff[[i]], aes_string(x="Load",y="residPCA", 
+  p = ggplot(measureListV2[[i]], aes_string(x="Load",y="residPCA", 
                               color=q.psVarsV2[i], group=q.psVarsV2[i])) +
     geom_line() + 
     geom_errorbar(width=.1, aes(ymin=residPCA-ci,ymax=residPCA+ci)) +
@@ -580,9 +580,8 @@ contrasts.facLoad.zProcSpeed_v1.MCI = rbind(
 
 lme.facLoad.zProcSpeed_v1.MCI = lmer(residPCA ~ facLoad*(zProcSpeed_v1 + 
                                                         c.DSFMAX_v2 +
-                                                        rMCI_cons_bin +
-                                                        apoe4) + 
-                                    c.age_v2 + site_v2rev + 
+                                                        rMCI_cons_bin) + 
+                                    apoe4 + c.age_v2 + site_v2rev + 
                                     Device + acamedbin + c.nas201tran + 
                                     (1 | case/vetsaid), data=pupilProcSpeed)
 summary(lme.facLoad.zProcSpeed_v1.MCI)
@@ -664,7 +663,7 @@ print(p.DSFMAX_v2)
 ggsave("K:/Projects/Pupil_ReactionTime/results/pupilPS_MaxDigitSpan.pdf", p.DSFMAX_v2)
 ```
 
-Plot pupil dilation by digit span max quantile
+Plot pupil dilation by digit span max quantile  
 ```{r, echo=FALSE}
 summaryResidPCA.MCI = summarySEwithin(pupilProcSpeed, 
                 measurevar="residPCA", 
@@ -691,7 +690,8 @@ print(p.MCI)
 ggsave("K:/Projects/Pupil_ReactionTime/results/pupilPS_MCI.pdf", p.MCI)
 ```
 
-Plot pupil dilation by ApoE4 status
+
+Plot pupil dilation by ApoE4 status  
 ```{r, echo=FALSE}
 summaryResidPCA.apoe4 = summarySEwithin(pupilProcSpeed, 
                 measurevar="residPCA", 

@@ -82,10 +82,10 @@ qVars = c("c.DSFMAX_v2","log_meanRT","log_medianRT","log_stdRT",
           "resid_log_stdRT","log_cvRT")
 new.qVars = qVars
 names(new.qVars) = paste0("q.",qVars)
-pupilChoiceRT %<>%
+pupilChoiceRT = pupilChoiceRT %>%
   group_by(vetsaid) %>%
-  dplyr::summarise_each_(funs(mean),qVars) %>%
-  mutate_each_(funs(quantcut(.,q=4, labels=seq(1,4))),qVars) %>%
+  dplyr::summarise_each_(funs(first),qVars) %>%
+  mutate_each_(funs(quantcut(., labels=seq(1,4))),qVars) %>%
   dplyr::select_("vetsaid"="vetsaid",.dots=new.qVars) %>%
   inner_join(pupilChoiceRT, by="vetsaid")
 
@@ -249,7 +249,8 @@ for (i in 1:length(q.rtMeasures)) {
     geom_errorbar(width=.1, aes(ymin=residPCA-ci,ymax=residPCA+ci)) +
     ggtitle(paste0("Pupil dilation by ",q.rtMeasures[i]," quantile")) +
     theme_bw(14) + ylab("Change in Pupil Diameter\n(Adjusted for Baseline)") +
-    scale_color_discrete(name="quantile")
+    scale_color_discrete(name="quantile") + 
+    scale_color_brewer(palette = "RdBu")
   plot_list[[i]] = p
 }
 
@@ -311,12 +312,12 @@ dev.off()
 loads = c(3,6,9)
 ```
 
-**Log Mean RT**
+**Log Mean RT**  
 ```{r, echo=FALSE}
 plot_list[[1]]
 ```
 
-Run basic model testing interaction of Load with log mean RT
+Run basic model testing interaction of Load with log mean RT  
 ```{r}
 contrasts.facLoad.log_meanRT = rbind(
     'Load3:log_meanRT vs Load6:log_meanRT' = c(0,0,0,0,0,0,0,0,0,0,0,0,-1,0,0,0),
@@ -333,7 +334,7 @@ summary(glht(lme.facLoad.log_meanRT, contrasts.facLoad.log_meanRT),
               test = adjusted("none"))
 ```
 
-Test for differences based on mean RT within each level of Load
+Test for differences based on mean RT within each level of Load  
 ```{r}
 lme.log_meanRT.loads <- lapply(loads, function(x) {
     lmer(residPCA ~ log_meanRT + apoe4 + c.age_v2 + site_v2rev + 
@@ -344,12 +345,12 @@ lme.log_meanRT.loads <- lapply(loads, function(x) {
 lapply(lme.log_meanRT.loads, summary)
 ```
 
-**Log Median RT**
+**Log Median RT**  
 ```{r, echo=FALSE}
 plot_list[[2]]
 ```
 
-Run basic model testing interaction of Load with log median RT
+Run basic model testing interaction of Load with log median RT  
 ```{r}
 contrasts.facLoad.log_medianRT = rbind(
     'Load3:log_medianRT vs Load6:log_medianRT' = c(0,0,0,0,0,0,0,0,0,0,0,0,-1,0,0,0),
@@ -366,7 +367,7 @@ summary(glht(lme.facLoad.log_medianRT, contrasts.facLoad.log_medianRT),
               test = adjusted("none"))
 ```
 
-Test for differences based on median RT within each level of Load
+Test for differences based on median RT within each level of Load  
 ```{r}
 lme.log_medianRT.loads <- lapply(loads, function(x) {
     lmer(residPCA ~ log_medianRT + apoe4 + c.age_v2 + site_v2rev + 
@@ -377,12 +378,12 @@ lme.log_medianRT.loads <- lapply(loads, function(x) {
 lapply(lme.log_medianRT.loads, summary)
 ```
 
-**Log Standard Deviation RT**
+**Log Standard Deviation RT**  
 ```{r, echo=FALSE}
 plot_list[[3]]
 ```
 
-Run basic model testing interaction of Load with log standard deviation RT
+Run basic model testing interaction of Load with log standard deviation RT  
 ```{r}
 contrasts.facLoad.log_stdRT = rbind(
     'Load3:log_stdRT vs Load6:log_stdRT' = c(0,0,0,0,0,0,0,0,0,0,0,0,-1,0,0,0),
@@ -399,7 +400,7 @@ summary(glht(lme.facLoad.log_stdRT, contrasts.facLoad.log_stdRT),
               test = adjusted("none"))
 ```
 
-Test for differences based on standard deviation RT within each level of Load
+Test for differences based on standard deviation RT within each level of Load  
 ```{r}
 lme.log_stdRT.loads <- lapply(loads, function(x) {
     lmer(residPCA ~ log_stdRT + apoe4 + c.age_v2 + site_v2rev + 
@@ -410,12 +411,12 @@ lme.log_stdRT.loads <- lapply(loads, function(x) {
 lapply(lme.log_stdRT.loads, summary)
 ```
 
-**Log Residual Standard Deviation RT**
+**Log Residual Standard Deviation RT**  
 ```{r, echo=FALSE}
 plot_list[[4]]
 ```
 
-Run basic model testing interaction of Load with residual log standard deviation RT
+Run basic model testing interaction of Load with residual log standard deviation RT  
 ```{r}
 contrasts.facLoad.resid_log_stdRT = rbind(
     'Load3:resid_log_stdRT vs Load6:resid_log_stdRT' = c(0,0,0,0,0,0,0,0,0,0,0,0,-1,0,0,0),
@@ -432,7 +433,7 @@ summary(glht(lme.facLoad.resid_log_stdRT, contrasts.facLoad.resid_log_stdRT),
               test = adjusted("none"))
 ```
 
-Test for differences based on residual standard deviation RT within each level of Load
+Test for differences based on residual standard deviation RT within each level of Load  
 ```{r}
 lme.resid_log_stdRT.loads <- lapply(loads, function(x) {
     lmer(residPCA ~ resid_log_stdRT + apoe4 + c.age_v2 + site_v2rev + 
@@ -443,12 +444,12 @@ lme.resid_log_stdRT.loads <- lapply(loads, function(x) {
 lapply(lme.resid_log_stdRT.loads, summary)
 ```
 
-**Log Coefficient of Variation RT**
+**Log Coefficient of Variation RT**  
 ```{r, echo=FALSE}
 plot_list[[5]]
 ```
 
-Run basic model testing interaction of Load with log coeffient of variance RT
+Run basic model testing interaction of Load with log coeffient of variance RT  
 ```{r}
 contrasts.facLoad.log_cvRT = rbind(
     'Load3:log_cvRT vs Load6:log_cvRT' = c(0,0,0,0,0,0,0,0,0,0,0,0,-1,0,0,0),
@@ -465,7 +466,7 @@ summary(glht(lme.facLoad.log_cvRT, contrasts.facLoad.log_cvRT),
               test = adjusted("none"))
 ```
 
-Test for differences based on coeffiecient of variation RT within each level of Load
+Test for differences based on coeffiecient of variation RT within each level of Load  
 ```{r}
 lme.log_cvRT.loads <- lapply(loads, function(x) {
     lmer(residPCA ~ log_cvRT + apoe4 + c.age_v2 + site_v2rev + 

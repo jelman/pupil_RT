@@ -52,6 +52,7 @@ RTdf = RTdf.loc[RTdf['TrialType']=='Simple', ['vetsaid','ZRT_v2','RTCOMPLETE_v2'
 
 # Load MCI data
 MCIdf = pd.read_csv(mci_fname)
+MCIdf = MCIdf[['vetsaid','rMCI_cons_v2pe']]
 
 #Filter out subjects who were given a Z score of 2 or were not completed
 RTdf = RTdf.loc[(RTdf['ZRT_v2']!=2) &
@@ -63,8 +64,7 @@ RTdf = RTdf.loc[(RTdf['ZRT_v2']!=2) &
 # Simple RT
 pupil_RT = pd.merge(cogdf, pupildf, on='vetsaid', how='right')
 pupil_RT = pd.merge(pupil_RT, RTdf, on='vetsaid', how='inner')
-pupil_RT = pd.merge(pupil_RT, MCIdf[['vetsaid','rMCI_cons_v2']],
-                         on='vetsaid', how='left')
+pupil_RT = pd.merge(pupil_RT, MCIdf, on='vetsaid', how='left')
 
 # Save out files
 outfile = os.path.join(datadir,outname)

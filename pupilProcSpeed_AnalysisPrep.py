@@ -7,7 +7,6 @@ Created on Thu Mar 10 12:51:55 2016
 
 from sas7bdat import SAS7BDAT
 import pandas as pd
-import numpy as np
 import os
 
 ###############################
@@ -45,7 +44,8 @@ cogdf = demodf.merge(cogdf, how='right', on='vetsaid')
 # Load and merge Proc Speed cognitive domain data
 cogdomainV1df = pd.read_csv(cogdomainV1_fname)
 cogdomainV1df = cogdomainV1df[['vetsaid']+procspeedVars]
-cogdomainV2df = pd.read_csv(cogdomainV1_fname)
+cogdomainV2df = pd.read_csv(cogdomainV2_fname)
+cogdomainV2df.columns = cogdomainV2df.columns.str.replace('_[vV]2','')
 cogdomainV2df = cogdomainV2df[['vetsaid']+procspeedVars]
 cogdf = cogdf.merge(cogdomainV1df, how='left', on='vetsaid')
 cogdf = cogdf.merge(cogdomainV2df, how='left', on='vetsaid', 

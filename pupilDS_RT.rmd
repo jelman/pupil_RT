@@ -1,5 +1,5 @@
 ---
-title: "Pupillometry and Choice Reaction Time"
+title: "Pupillometry and Reaction Time"
 author: "Jeremy Elman"
 date: "`r Sys.Date()`"
 output: html_document
@@ -22,103 +22,160 @@ library(magrittr)
 library(sjPlot)
 library(sjmisc)
 library(multcomp)
-source("K:/code/summarySE.R")
-source("K:/code/normDataWithin.R")
-source("K:/code/summarySEwithin.R")
-source("K:/code/get_legend.R")
+source("~/netshare/K/code/misc/summarySE.R")
+source("~/netshare/K/code/misc/normDataWithin.R")
+source("~/netshare/K/code/misc/summarySEwithin.R")
+source("~/netshare/K/code/misc/get_legend.R")
 ```
 
 Load data.
 ```{r}
-pupilChoiceRT = read.csv("K:/Projects/Pupil_ReactionTime/data/pupil_choiceRT.csv", 
+pupilRT = read.csv("~/netshare/K/Projects/Pupil_ReactionTime/data/pupil_RT.csv", 
                          stringsAsFactors = FALSE)
-pupilChoiceRT = pupilChoiceRT[!is.na(pupilChoiceRT$PCA) &
-                              !is.na(pupilChoiceRT$rMCI_cons_v2),]
-pupilChoiceRT = subset(pupilChoiceRT, VETSAGRP=='V1V2')
-str(pupilChoiceRT)
+pupilRT = pupilRT[!is.na(pupilRT$PCA) & !is.na(pupilRT$rMCI_cons_v2pe),]
+pupilRT = subset(pupilRT, (VETSAGRP=='V1V2') | (VETSAGRP=='V2AR'))
+str(pupilRT)
 ```
 
 Recode two-level factors to 0/1. Center continuous data.
 *TRANSFORM*
 ```{r}
 # Create factors
-pupilChoiceRT$facLoad = factor(pupilChoiceRT$Load)
-pupilChoiceRT$facLoad = relevel(pupilChoiceRT$facLoad, ref="6")
-contr.backward.diff = matrix(c(-2/3, 1/3, 1/3,-1/3,-1/3,2/3), ncol = 2)
-contrasts(pupilChoiceRT$facLoad) = contr.backward.diff
-pupilChoiceRT$MZ = ifelse(pupilChoiceRT$zygos==1, 1, 0)
-pupilChoiceRT$site_v2rev = ifelse(pupilChoiceRT$site_v2rev==1, 1, 0)
-pupilChoiceRT$Device = factor(pupilChoiceRT$LR_Device)
-pupilChoiceRT$acamedbin = ifelse(pupilChoiceRT$acamedtot==0, 0, 1)
+pupilRT$facLoad = factor(pupilRT$Load)
+pupilRT$facLoad = relevel(pupilRT$facLoad, ref="6")
+pupilRT$MZ = ifelse(pupilRT$zygos==1, 1, 0)
+pupilRT$site_v2rev = ifelse(pupilRT$site_v2rev==1, 1, 0)
+pupilRT$Device = factor(pupilRT$LR_Device)
+pupilRT$acamedbin = ifelse(pupilRT$acamedtot==0, 0, 1)
 
 #Bin MCI data into 0 = No impairment, 1 = Single domain MCI, 2 = Multi-domain MCI.
-pupilChoiceRT$rMCI_cons_bin = ifelse(pupilChoiceRT$rMCI_cons_v2==0, 0, 
-                                        ifelse(pupilChoiceRT$rMCI_cons_v2==1 | 
-                                               pupilChoiceRT$rMCI_cons_v2==2, 1, 2))
-pupilChoiceRT$rMCI_cons_bin = factor(pupilChoiceRT$rMCI_cons_bin)
+pupilRT$rMCI_cons_3grp = ifelse(pupilRT$rMCI_cons_v2pe==0, 0, 
+                                        ifelse(pupilRT$rMCI_cons_v2pe==1 | 
+                                               pupilRT$rMCI_cons_v2pe==2, 1, 2))
+pupilRT$rMCI_cons_3grp = factor(pupilRT$rMCI_cons_3grp, 
+                                   labels=c("CN","SMCI","MMCI"))
+
+#Bin MCI data into 0 = No impairment, 1 = Non-amnestic S-MCI, 2 = Amnestic S-MCI, 3 = Multi-domain MCI.
+pupilRT$rMCI_cons_4grp = pupilRT$rMCI_cons_v2pe
+pupilRT$rMCI_cons_4grp = gsub(4, 3, pupilRT$rMCI_cons_4grp)
+pupilRT$rMCI_cons_4grp = factor(pupilRT$rMCI_cons_4grp,
+                                   labels=c("CN","naSMCI","aSMCI","MMCI"))
+
+# Original MCI categories: 0 = No impairment, 1 = Non-amnestic S-MCI, 2 = Amnestic S-MCI, 3 = Non-amnestic M-MCI, 4 = Amnestic M-MCI
+pupilRT$rMCI_cons_v2pe = factor(pupilRT$rMCI_cons_v2pe, 
+                                   labels=c("CN","naSMCI","aSMCI","naMMCI","aMMCI"))
 
 # Center continuous variables to interpret intercept at mean value (rather than 0).
 # Subject specific variables centered at subject level, trial specific variables centered at trial level.
+
+# Trial specific variables
 contTrialVars = c("PCA","pctPCA","adjPCA")
-contSubjVars = c("age_v2","nas201tran","DSFMAX_v2")
 
 # Center trial specific variables
 for (x in contTrialVars) {
   newcol = paste0('c.',x)
-  pupilChoiceRT[[newcol]] = as.numeric(scale(pupilChoiceRT[[x]], center=TRUE, scale=FALSE))
+  pupilRT[[newcol]] = as.numeric(scale(pupilRT[[x]], center=TRUE, scale=FALSE))
 }
 
+# Subject specific variables centered at subject level.
+contSubjVars = c("age_v2","nas201tran","DSFMAX_V2_nasp")
+
 # Center subject specific variables
-subjDF = pupilChoiceRT[c("vetsaid",contSubjVars)]
-subjDF = subjDF %>% group_by(vetsaid) %>% dplyr::summarise_each(funs(first))
+subjDF = pupilRT[c("vetsaid",contSubjVars)]
+subjDF %<>% group_by(vetsaid) %>% dplyr::summarise_each(funs(mean))
 nums <- sapply(subjDF, is.numeric)
 c.subjDF = as.data.frame(apply(subjDF[,nums],2, function(y) y - mean(y, na.rm=TRUE)))
 names(c.subjDF) = paste0("c.",names(c.subjDF))
 c.subjDF$vetsaid = subjDF$vetsaid
-pupilChoiceRT = left_join(pupilChoiceRT, c.subjDF, by="vetsaid")
+pupilRT = left_join(pupilRT, c.subjDF, by="vetsaid")
+
+
+### Generate new subject level variables ###
+
+# Create subject level dataset of RT variables
+subjRT = pupilRT %>%
+  select(vetsaid, ends_with("LOG_V2_nasp")) %>%
+  group_by(vetsaid) %>%
+  summarise_all(funs(first))
+
+# Derive RT metrics such as CV and residSTD
+# Coefficient of Variation = STD / MEAN
+subjRT = subjRT %>% 
+  mutate(SRTLCV_V2_nasp = SRTLSTDLOG_V2_nasp/SRTLMEANLOG_V2_nasp,
+         SRTRCV_V2_nasp = SRTRSTDLOG_V2_nasp/SRTRMEANLOG_V2_nasp,
+         SRTGCV_V2_nasp = SRTGSTDLOG_V2_nasp/SRTGMEANLOG_V2_nasp,
+         CHRTLCV_V2_nasp = CHRTLSTDLOG_V2_nasp/CHRTLMEANLOG_V2_nasp,
+         CHRTRCV_V2_nasp = CHRTRSTDLOG_V2_nasp/CHRTRMEANLOG_V2_nasp,
+         CHRTGCV_V2_nasp = CHRTGSTDLOG_V2_nasp/CHRTGMEANLOG_V2_nasp)
+
+# Standard deviation orthogonalized with respect to mean
+subjRT$residSRTLSTDLOG_V2_nasp = resid(lm(SRTLSTDLOG_V2_nasp ~ SRTLMEANLOG_V2_nasp, data=subjRT, na.action="na.exclude"))
+subjRT$residSRTRSTDLOG_V2_nasp = resid(lm(SRTRSTDLOG_V2_nasp ~ SRTRMEANLOG_V2_nasp, data=subjRT, na.action="na.exclude"))
+subjRT$residSRTGSTDLOG_V2_nasp = resid(lm(SRTGSTDLOG_V2_nasp ~ SRTGMEANLOG_V2_nasp, data=subjRT, na.action="na.exclude"))
+subjRT$residCHRTLSTDLOG_V2_nasp = resid(lm(CHRTLSTDLOG_V2_nasp ~ CHRTLMEANLOG_V2_nasp, data=subjRT, na.action="na.exclude"))
+subjRT$residCHRTRSTDLOG_V2_nasp = resid(lm(CHRTRSTDLOG_V2_nasp ~ CHRTRMEANLOG_V2_nasp, data=subjRT, na.action="na.exclude"))
+subjRT$residCHRTGSTDLOG_V2_nasp = resid(lm(CHRTGSTDLOG_V2_nasp ~ CHRTGMEANLOG_V2_nasp, data=subjRT, na.action="na.exclude"))
+
+# Merge back into full pupil dataset
+pupilRT = pupilRT %>%
+    left_join(subjRT, by="vetsaid") %>% 
+    dplyr::select(-ends_with(".x"))
+
+names(pupilRT) = gsub(".y","",names(pupilRT), fixed=T)
+
 
 # Create quantile groups
-qVars = c("c.DSFMAX_v2","log_meanRT","log_medianRT","log_stdRT",
-          "resid_log_stdRT","log_cvRT")
+qVars = names(pupilRT)[grepl("_V2_nasp", names(pupilRT)) & !grepl("c.", names(pupilRT))]
 new.qVars = qVars
 names(new.qVars) = paste0("q.",qVars)
-pupilChoiceRT = pupilChoiceRT %>%
+pupilRT = pupilRT %>%
   group_by(vetsaid) %>%
   dplyr::summarise_each_(funs(first),qVars) %>%
   mutate_each_(funs(quantcut(., labels=seq(1,4))),qVars) %>%
   dplyr::select_("vetsaid"="vetsaid",.dots=new.qVars) %>%
-  inner_join(pupilChoiceRT, by="vetsaid")
+  inner_join(pupilRT, by="vetsaid")
+
+qVars = names(pupilRT)[grepl("_V2_nasp", names(pupilRT)) & !grepl("c.", names(pupilRT))]
+new.qVars = qVars
+names(new.qVars) = paste0("q.",qVars)
+
+quantDF = pupilRT %>%
+  group_by(vetsaid) %>%
+  summarise_at(vars(one_of(qVars)), funs(first)) %>%
+  mutate_at(vars(one_of(qVars)), funs(quantcut), labels=seq(1,4)) %>%
+  dplyr::select_("vetsaid"="vetsaid",.dots=new.qVars) 
+ 
+pupilRT = pupilRT %>%
+  inner_join(quantDF, by="vetsaid")
 
 # Create residPCA by regressing BaselineDiameter from PCA and taking the residuals.
 lme.PCA.resid = lmer(PCA ~ BaselineDiameter + (1 | case/vetsaid),
-                     data=pupilChoiceRT)
-pupilChoiceRT$residPCA = resid(lme.PCA.resid)
+                     data=pupilRT)
+pupilRT$residPCA = resid(lme.PCA.resid)
 ```
 
 # Basic sample descriptives
 ```{r, include=FALSE}
 #Create dataset with subject level variables to assess relationships with BOLD variance.
-
-subjDatChoiceRT = pupilChoiceRT %>% 
+subjDatRT = pupilRT %>% 
             dplyr::select(-contains("PCA"),-contains("Load")) %>%
             group_by(vetsaid) %>%
-            summarise_each(funs(first))
-#write.csv(subjDatChoiceRT, "K:/Projects/Pupil_ReactionTime/data/ChoiceRT_subjDat.csv")
+            summarise_all(funs(first))
 ```
 
 How many subjects?
 ```{r}
-n_distinct(subjDatChoiceRT$vetsaid)
+n_distinct(subjDatRT$vetsaid)
 ```
 
 How many attrition replacements?
 ```{r}
-dplyr::count(subjDatChoiceRT, VETSAGRP)
+dplyr::count(subjDatRT, VETSAGRP)
 ```
 
 How many twin pairs vs unpaired twins? 
 ```{r}
-subjDatChoiceRT %>%
+subjDatRT %>%
   group_by(case) %>%
   dplyr::summarise(n_twins = n_distinct(vetsaid)) %>%
   dplyr::count(n_twins)
@@ -127,7 +184,7 @@ subjDatChoiceRT %>%
 
 How many MZ and DZ pairs? (excludes unpaired subjects)
 ```{r}
-subjDatChoiceRT %>% 
+subjDatRT %>% 
   group_by(case) %>%
   mutate(n_twins = n_distinct(vetsaid)) %>%
   filter(n_twins > 1) %>%
@@ -138,7 +195,7 @@ subjDatChoiceRT %>%
 
 How many levels of load did subjects complete? Shows number of subjects who completed 1, 2, or 3 levels (corresponding to digit spans of 3, 6, and 9).
 ```{r}
-pupilChoiceRT %>%
+pupilRT %>%
   group_by(vetsaid) %>%
   dplyr::summarise(load = n()) %>%
   dplyr::count(load)
@@ -146,46 +203,43 @@ pupilChoiceRT %>%
 
 How many of each MCI group?
 ```{r}
-dplyr::count(subjDatChoiceRT, rMCI_cons_v2)
+dplyr::count(subjDatRT, rMCI_cons_v2pe)
 ```
 
 How many of each MCI group binned by single or multi-doman MCI?
 ```{r}
-dplyr::count(subjDatChoiceRT, rMCI_cons_bin)
+dplyr::count(subjDatRT, rMCI_cons_3grp)
 ```
 
-Look at frequencies of MCI measures
+How many of each MCI group binned by single amnestic/non-amnestic or multi-doman MCI?
 ```{r}
-mci.p1 = sjp.frq(subjDatChoiceRT$rMCI_cons_v2, 
-          title="MCI groups",
-          axisLabels.x=c("Normal","Single Domain\nNon-amnestic",
-                         "Single Domain\nAmnestic","Multi Domain\nNon-Amnestic",
-                         "Multi Domain Amnestic"),
-          axisLimits.y = c(0,1100))
-
-mci.p2 = sjp.frq(subjDatChoiceRT$rMCI_cons_bin, 
-          title="Binned MCI groups",
-          axisLabels.x=c("Normal","Single Domain MCI","Multi Domain MCI"),
-          axisLimits.y = c(0,1100))
-
-grid.arrange(mci.p1$plot,mci.p2$plot)
+dplyr::count(subjDatRT, rMCI_cons_4grp)
 ```
+
+Plot frequencies of MCI measures
+```{r}
+sjp.frq(subjDatRT$rMCI_cons_4grp, 
+          title="MCI groups",
+          axis.labels=c("Normal","Single Domain\nNon-amnestic",
+                         "Single Domain\nAmnestic","Multi Domain"))
+```
+
 
 ```{r, include=FALSE}
-pdf("K:/Projects/Pupil_ReactionTime/results/RT_MCI_groups.pdf", width=8, height=6)
-grid.arrange(mci.p1$plot,mci.p2$plot)
-dev.off()
+# pdf("~/netshare/K/Projects/Pupil_ReactionTime/results/RT_MCI_groups.pdf", width=8, height=6)
+# grid.arrange(mci.p1$plot,mci.p2$plot)
+# dev.off()
 ```
 
 Plot pctPCA and residPCA data to check for ceiling effects on pupil dilation
 ```{r}
-pctPcaPlot = ggplot(pupilChoiceRT, aes(x=pctPCA)) + 
+pctPcaPlot = ggplot(pupilRT, aes(x=pctPCA)) + 
   geom_histogram(fill="steelblue3",color="black",size=.4) + 
   facet_wrap(~ Load, nrow=3) + 
   ggtitle("Histogram of pctPCA by Load") + 
   xlab("% PCA") + theme_bw() 
 
-residPcaPlot = ggplot(pupilChoiceRT, aes(x=residPCA)) + 
+residPcaPlot = ggplot(pupilRT, aes(x=residPCA)) + 
   geom_histogram(fill="steelblue3",color="black",size=.4) + 
   facet_wrap(~ Load, nrow=3) + 
   ggtitle("Histogram of residPCA by Load") + 
@@ -196,17 +250,16 @@ grid.arrange(pctPcaPlot, residPcaPlot, ncol=2)
 
 
 ```{r, include=FALSE}
-pdf("K:/Projects/Pupil_ReactionTime/results/Choice_PCAxLoad.pdf")
-grid.arrange(pctPcaPlot, residPcaPlot, ncol=2)
-dev.off()
+# pdf("~/netshare/K/Projects/Pupil_ReactionTime/results/Choice_PCAxLoad.pdf")
+# grid.arrange(pctPcaPlot, residPcaPlot, ncol=2)
+# dev.off()
 ```
 
 Plot histograms of RT measures
 ```{r}
-rtSubset = pupilChoiceRT %>%
+rtSubset = pupilRT %>%
   filter(Load==3) %>%
-  dplyr::select(log_meanRT, log_medianRT, 
-                log_stdRT, resid_log_stdRT, log_cvRT)
+  dplyr::select(contains("CHRTG"), contains("SRTG"), -starts_with("q."))
 
 plot_list = list()
 for (i in 1:ncol(rtSubset)) {
@@ -217,297 +270,91 @@ for (i in 1:ncol(rtSubset)) {
 }
 
 
-do.call(grid.arrange, c(plot_list, list(ncol=2)))
+do.call(grid.arrange, c(plot_list, list(nrow=4)))
 ```
 
 ```{r, include=FALSE}
-pdf("K:/Projects/Pupil_ReactionTime/results/Choice_rtHists.pdf")
-do.call(grid.arrange, c(plot_list, list(ncol=2)))
-dev.off()
+# pdf("~/netshare/K/Projects/Pupil_ReactionTime/results/Choice_rtHists.pdf")
+# do.call(grid.arrange, c(plot_list, list(ncol=2)))
+# dev.off()
 ```
 
-Plot pupil dilation of all RT measure quantile groups
-```{r}
-rtMeasures = c("log_meanRT","log_medianRT",
-               "log_stdRT","resid_log_stdRT","log_cvRT")
-measureList = list()
-for (measure in rtMeasures){
-  measureList[[measure]] = summarySEwithin(pupilChoiceRT, 
-                measurevar="residPCA", 
-                idvar="vetsaid", 
-                withinvars="Load", 
-                betweenvars=paste0("q.",measure),
-                na.rm=TRUE)
-}
-
-q.rtMeasures = paste("q",rtMeasures, sep=".")
-plot_list = list()
-for (i in 1:length(q.rtMeasures)) {
-  p = ggplot(measureList[[i]], aes_string(x="Load",y="residPCA", 
-                              color=q.rtMeasures[[i]], group=q.rtMeasures[[i]])) +
-    geom_line() + 
-    geom_errorbar(width=.1, aes(ymin=residPCA-ci,ymax=residPCA+ci)) +
-    ggtitle(paste0("Pupil dilation by ",q.rtMeasures[i]," quantile")) +
-    theme_bw(14) + ylab("Change in Pupil Diameter\n(Adjusted for Baseline)") +
-    scale_color_discrete(name="quantile") + 
-    scale_color_brewer(palette = "RdBu")
-  plot_list[[i]] = p
-}
-
-legend = get_legend(plot_list[[1]])
-for (i in 1:length(plot_list)) {
-  plot_list[[i]] = plot_list[[i]] + theme(legend.position="none")
-}
-plot_list$legend = legend
-
-#Save out plot
-pdf("K:/Projects/Pupil_ReactionTime/results/PCAxLoadxChoiceRT_allGroups.pdf",width=12,height=10)
-do.call(grid.arrange,  c(plot_list, list(ncol=2)))
-dev.off()
-```
-
-
-```{r, include=FALSE}
-#Plot pupil dilation of upper and lower RT measure quantile groups
-plot_list = list()
-for (i in 1:length(q.rtMeasures)) {
-  call <- substitute(filter(summarydf, target==1 | target==4),
-                         list(summarydf = measureList[[i]],
-                              target = as.name(q.rtMeasures[[i]]))) 
-  df = eval(call) 
-  p = ggplot(df, aes_string(x="Load",y="residPCA", 
-                              color=q.rtMeasures[[i]], group=q.rtMeasures[[i]])) +
-    geom_line(size=1) + 
-    geom_errorbar(width=.1, size=1, aes(ymin=residPCA-ci,ymax=residPCA+ci)) +
-    ggtitle(paste0("Pupil Response by ",rtMeasures[[i]], " quantile")) +
-    theme_bw(20) + ylab("Change in Pupil Diameter\n(Adjusted for Baseline)") +
-    scale_color_discrete(name="quantile",
-                         labels=c("Lower","Upper")) +
-    theme(plot.title = element_text(size=28),
-          axis.title = element_text(size=28),
-          axis.text.x = element_text(size=24),
-          legend.justification=c(1,0), legend.position=c(1,0), 
-          legend.title = element_text(size=18, face="bold"),
-          legend.text = element_text(size=18))
-  plot_list[[i]] = p
-}
-
-legend = get_legend(plot_list[[1]])
-for (i in 1:length(plot_list)) {
-  plot_list[[i]] = plot_list[[i]] + theme(legend.position="none")
-}
-plot_list$legend = legend
-
-# Save out plot
-pdf("K:/Projects/Pupil_ReactionTime/results/PCAxLoadxChoiceRT_Quartiles.pdf",width=12,height=10)
-do.call(grid.arrange,  c(plot_list, list(ncol=2)))
-dev.off()
-```
 
 -------------------------------
-# Mixed Effects Models: Cognitively normal only
 
-```{r, include=FALSE}
-# Levels of load to test
-loads = c(3,6,9)
-```
-
-**Log Mean RT**  
-```{r, echo=FALSE}
-plot_list[[1]]
-```
-
-Run basic model testing interaction of Load with log mean RT  
-```{r}
-contrasts.facLoad.log_meanRT = rbind(
-    'Load3:log_meanRT vs Load6:log_meanRT' = c(0,0,0,0,0,0,0,0,0,0,0,0,-1,0,0,0),
-    'Load6:log_meanRT vs Load9:log_meanRT' = c(0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0),
-    'Load3:log_meanRT vs Load9:log_meanRT' = c(0,0,0,0,0,0,0,0,0,0,0,0,-1,1,0,0)
-)
-lme.facLoad.log_meanRT = lmer(residPCA ~ facLoad*(log_meanRT + c.DSFMAX_v2) + 
-                                apoe4 + c.age_v2 + site_v2rev + Device + 
-                                acamedbin + c.nas201tran + 
-                                (1 | case/vetsaid),
-                                data=subset(pupilChoiceRT,rMCI_cons_bin==0))
-summary(lme.facLoad.log_meanRT)
-summary(glht(lme.facLoad.log_meanRT, contrasts.facLoad.log_meanRT), 
-              test = adjusted("none"))
-```
-
-Test for differences based on mean RT within each level of Load  
-```{r}
-lme.log_meanRT.loads <- lapply(loads, function(x) {
-    lmer(residPCA ~ log_meanRT + apoe4 + c.age_v2 + site_v2rev + 
-                    Device + acamedbin + c.DSFMAX_v2 + c.nas201tran + 
-                    (1 | case), data=subset(pupilChoiceRT,Load==x &
-                                              rMCI_cons_bin==0))
-})
-lapply(lme.log_meanRT.loads, summary)
-```
-
-**Log Median RT**  
-```{r, echo=FALSE}
-plot_list[[2]]
-```
-
-Run basic model testing interaction of Load with log median RT  
-```{r}
-contrasts.facLoad.log_medianRT = rbind(
-    'Load3:log_medianRT vs Load6:log_medianRT' = c(0,0,0,0,0,0,0,0,0,0,0,0,-1,0,0,0),
-    'Load6:log_medianRT vs Load9:log_medianRT' = c(0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0),
-    'Load3:log_medianRT vs Load9:log_medianRT' = c(0,0,0,0,0,0,0,0,0,0,0,0,-1,1,0,0)
-)
-lme.facLoad.log_medianRT = lmer(residPCA ~ facLoad*(log_medianRT + c.DSFMAX_v2) + 
-                                apoe4 + c.age_v2 + site_v2rev + Device + 
-                                acamedbin + c.nas201tran + 
-                                (1 | case/vetsaid),
-                                data=subset(pupilChoiceRT,rMCI_cons_bin==0))
-summary(lme.facLoad.log_medianRT)
-summary(glht(lme.facLoad.log_medianRT, contrasts.facLoad.log_medianRT), 
-              test = adjusted("none"))
-```
-
-Test for differences based on median RT within each level of Load  
-```{r}
-lme.log_medianRT.loads <- lapply(loads, function(x) {
-    lmer(residPCA ~ log_medianRT + apoe4 + c.age_v2 + site_v2rev + 
-                    Device + acamedbin + c.DSFMAX_v2 + c.nas201tran + 
-                    (1 | case), data=subset(pupilChoiceRT,Load==x & 
-                                              rMCI_cons_bin==0))
-})
-lapply(lme.log_medianRT.loads, summary)
-```
-
-**Log Standard Deviation RT**  
-```{r, echo=FALSE}
-plot_list[[3]]
-```
-
-Run basic model testing interaction of Load with log standard deviation RT  
-```{r}
-contrasts.facLoad.log_stdRT = rbind(
-    'Load3:log_stdRT vs Load6:log_stdRT' = c(0,0,0,0,0,0,0,0,0,0,0,0,-1,0,0,0),
-    'Load6:log_stdRT vs Load9:log_stdRT' = c(0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0),
-    'Load3:log_stdRT vs Load9:log_stdRT' = c(0,0,0,0,0,0,0,0,0,0,0,0,-1,1,0,0)
-)
-lme.facLoad.log_stdRT = lmer(residPCA ~ facLoad*(log_stdRT + c.DSFMAX_v2) + 
-                                apoe4 + c.age_v2 + site_v2rev + Device + 
-                                acamedbin + c.nas201tran + 
-                                (1 | case/vetsaid),
-                                data=subset(pupilChoiceRT,rMCI_cons_bin==0))
-summary(lme.facLoad.log_stdRT)
-summary(glht(lme.facLoad.log_stdRT, contrasts.facLoad.log_stdRT), 
-              test = adjusted("none"))
-```
-
-Test for differences based on standard deviation RT within each level of Load  
-```{r}
-lme.log_stdRT.loads <- lapply(loads, function(x) {
-    lmer(residPCA ~ log_stdRT + apoe4 + c.age_v2 + site_v2rev + 
-                    Device + acamedbin + c.DSFMAX_v2 + c.nas201tran + 
-                    (1 | case), data=subset(pupilChoiceRT,Load==x & 
-                                              rMCI_cons_bin==0))
-})
-lapply(lme.log_stdRT.loads, summary)
-```
-
-**Log Residual Standard Deviation RT**  
-```{r, echo=FALSE}
-plot_list[[4]]
-```
-
-Run basic model testing interaction of Load with residual log standard deviation RT  
-```{r}
-contrasts.facLoad.resid_log_stdRT = rbind(
-    'Load3:resid_log_stdRT vs Load6:resid_log_stdRT' = c(0,0,0,0,0,0,0,0,0,0,0,0,-1,0,0,0),
-    'Load6:resid_log_stdRT vs Load9:resid_log_stdRT' = c(0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0),
-    'Load3:resid_log_stdRT vs Load9:resid_log_stdRT' = c(0,0,0,0,0,0,0,0,0,0,0,0,-1,1,0,0)
-)
-lme.facLoad.resid_log_stdRT = lmer(residPCA ~ facLoad*(resid_log_stdRT + c.DSFMAX_v2) + 
-                                apoe4 + c.age_v2 + site_v2rev + Device + 
-                                acamedbin + c.nas201tran + 
-                                (1 | case/vetsaid),
-                                data=subset(pupilChoiceRT,rMCI_cons_bin==0))
-summary(lme.facLoad.resid_log_stdRT)
-summary(glht(lme.facLoad.resid_log_stdRT, contrasts.facLoad.resid_log_stdRT), 
-              test = adjusted("none"))
-```
-
-Test for differences based on residual standard deviation RT within each level of Load  
-```{r}
-lme.resid_log_stdRT.loads <- lapply(loads, function(x) {
-    lmer(residPCA ~ resid_log_stdRT + apoe4 + c.age_v2 + site_v2rev + 
-                    Device + acamedbin + c.DSFMAX_v2 + c.nas201tran + 
-                    (1 | case), data=subset(pupilChoiceRT,Load==x & 
-                                              rMCI_cons_bin==0))
-})
-lapply(lme.resid_log_stdRT.loads, summary)
-```
-
-**Log Coefficient of Variation RT**  
-```{r, echo=FALSE}
-plot_list[[5]]
-```
-
-Run basic model testing interaction of Load with log coeffient of variance RT  
-```{r}
-contrasts.facLoad.log_cvRT = rbind(
-    'Load3:log_cvRT vs Load6:log_cvRT' = c(0,0,0,0,0,0,0,0,0,0,0,0,-1,0,0,0),
-    'Load6:log_cvRT vs Load9:log_cvRT' = c(0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0),
-    'Load3:log_cvRT vs Load9:log_cvRT' = c(0,0,0,0,0,0,0,0,0,0,0,0,-1,1,0,0)
-)
-lme.facLoad.log_cvRT = lmer(residPCA ~ facLoad*(log_cvRT + c.DSFMAX_v2) + 
-                                apoe4 + c.age_v2 + site_v2rev + Device + 
-                                acamedbin + c.nas201tran + 
-                                (1 | case/vetsaid),
-                                data=subset(pupilChoiceRT,rMCI_cons_bin==0))
-summary(lme.facLoad.log_cvRT)
-summary(glht(lme.facLoad.log_cvRT, contrasts.facLoad.log_cvRT), 
-              test = adjusted("none"))
-```
-
-Test for differences based on coeffiecient of variation RT within each level of Load  
-```{r}
-lme.log_cvRT.loads <- lapply(loads, function(x) {
-    lmer(residPCA ~ log_cvRT + apoe4 + c.age_v2 + site_v2rev + 
-                    Device + acamedbin + c.DSFMAX_v2 + c.nas201tran + 
-                    (1 | case), data=subset(pupilChoiceRT,Load==x &
-                                              rMCI_cons_bin==0))
-})
-lapply(lme.log_cvRT.loads, summary)
-```
-
-----------------
 # Mixed Effects Models: All MCI groups
 
-Run model testing interaction of Load with log mean RT, digit span and MCI
+Run model testing interaction of load with log mean choice RT
 ```{r}
-contrasts.facLoad.log_meanRT.MCI = rbind(
-    'Load3:log_meanRT vs Load6:log_meanRT' = c(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,-1,0,0,0,0,0,0,0),
-    'Load6:log_meanRT vs Load9:log_meanRT' = c(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0),
-    'Load3:log_meanRT vs Load9:log_meanRT' = c(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,-1,1,0,0,0,0,0,0)
-)
 
-lme.facLoad.log_meanRT.MCI = lmer(residPCA ~ facLoad*(log_meanRT + 
-                                                        c.DSFMAX_v2 +
-                                                        rMCI_cons_bin) + 
-                                    apoe4 + c.age_v2 + site_v2rev + 
-                                    Device + acamedbin + c.nas201tran + 
-                                    (1 | case/vetsaid), data=pupilChoiceRT)
-summary(lme.facLoad.log_meanRT.MCI)
-summary(glht(lme.facLoad.log_meanRT.MCI, 
-             contrasts.facLoad.log_meanRT.MCI),
-             test = adjusted("none"))
+lme.facLoad.CHRTGMEANLOG.MCI = lmer(residPCA ~ facLoad*(CHRTGMEANLOG_V2_nasp + 
+                                                        c.DSFMAX_V2_nasp +
+                                                        rMCI_cons_4grp) + 
+                                    apoe4 + c.age_v2 + site_v2rev + Device + acamedbin + 
+                                    (1 | case/vetsaid), data=pupilRT)
+summary(lme.facLoad.CHRTGMEANLOG.MCI)
+anova(lme.facLoad.CHRTGMEANLOG.MCI)
+```
+
+Plot pupil dilation by log mean choice RT quantile
+```{r, echo=FALSE}
+# Plot raw values
+summaryResidPCA.log_meanRT = summarySEwithin(pupilAXCPT, 
+                measurevar="residPCA", 
+                idvar="vetsaid", 
+                withinvars="Load",
+                betweenvars="q.CPTDPRIME_V2_nasp",
+                na.rm=TRUE)
+p.Draw = ggplot(summaryResidPCA.dprime, aes(x=Load,y=residPCA,
+                                        color=q.CPTDPRIME_V2_nasp,
+                                        group=q.CPTDPRIME_V2_nasp)) +
+  geom_line(size=1) +
+  geom_errorbar(width=.2,size=1, aes(ymin=residPCA-ci,ymax=residPCA+ci)) +
+  theme_bw(20) + ylab("Change in Pupil Diameter") +
+  scale_color_brewer(name=" d' quartile", palette='RdBu') + 
+          theme(plot.title = element_text(size=20),
+                axis.title = element_text(size=18),
+                axis.text.x = element_text(size=16),
+                legend.background = element_rect(fill = "transparent"),
+                legend.justification=c(1,0), legend.position=c(1,0), 
+                legend.text.align=1,
+                legend.title.align=0,
+                legend.title = element_text(size=16),
+                legend.text = element_text(size=16))
+
+# Plot predicted values
+dfDpred = sjp.int(lme.facLoad.dprime.MCI, type="eff", int.term="facLoad:CPTDPRIME_V2_nasp", 
+               swap.pred=T, mdrt.values = "quart", print.plot=F)$data.list[[1]]
+levels(dfDpred$grp) = seq(length(levels(dfDpred$grp)))
+p.Dpred = ggplot(data=subset(dfDpred, !grp==3), aes(x=x, y=y, color=grp, group=grp)) + 
+          geom_line(size=1) +
+          geom_errorbar(width=.2,size=1, aes(ymin=conf.low,ymax=conf.high)) +
+          ylab(expression(paste("Predicted ", Delta, " Pupil Diameter"))) + xlab("Load") +
+          scale_color_brewer(name="d' quartile",palette='RdBu',direction=-1,labels=seq(4)) + 
+          scale_x_continuous(breaks=c(3,6,9)) + theme_bw(16) +
+          theme(plot.title = element_text(size=20),
+                axis.title = element_text(size=18),
+                axis.text.x = element_text(size=16),
+                legend.background = element_rect(fill = "transparent"),
+                legend.justification=c(1,0), legend.position=c(1,0), 
+                legend.text.align=1,
+                legend.title.align=0,
+                legend.title = element_text(size=16),
+                legend.text = element_text(size=16))
+
+gDprime = arrangeGrob(p.Draw, p.Dpred,ncol=2)
+
+ggsave("~/netshare/K/Projects/Pupil_AX-CPT/results/pupil_dprime_All.png", gDprime, height=6, width=12, dpi=300)
 ```
 
 Test for differences based on mean RT within each level of Load
 ```{r}
 lme.log_meanRT.loads.MCI <- lapply(loads, function(x) {
     lmer(residPCA ~ log_meanRT + apoe4 + c.age_v2 + site_v2rev + 
-                    Device + acamedbin + c.DSFMAX_v2 + 
-                    rMCI_cons_bin + c.nas201tran + 
+                    Device + acamedbin + c.DSFMAX_V2_nasp + 
+                    rMCI_cons_4grp + c.nas201tran + 
                     (1 | case), 
-         data=filter(pupilChoiceRT, Load==x))
+         data=filter(pupilRT, Load==x))
 })
 lapply(lme.log_meanRT.loads.MCI, summary)
 ```
@@ -521,11 +368,11 @@ contrasts.facLoad.log_medianRT.MCI = rbind(
 )
 
 lme.facLoad.log_medianRT.MCI = lmer(residPCA ~ facLoad*(log_medianRT + 
-                                                        c.DSFMAX_v2 +
-                                                        rMCI_cons_bin) + 
+                                                        c.DSFMAX_V2_nasp +
+                                                        rMCI_cons_4grp) + 
                                     apoe4 + c.age_v2 + site_v2rev + 
                                     Device + acamedbin + c.nas201tran + 
-                                    (1 | case/vetsaid), data=pupilChoiceRT)
+                                    (1 | case/vetsaid), data=pupilRT)
 summary(lme.facLoad.log_medianRT.MCI)
 summary(glht(lme.facLoad.log_medianRT.MCI, 
              contrasts.facLoad.log_medianRT.MCI),
@@ -536,10 +383,10 @@ Test for differences based on median RT within each level of Load
 ```{r}
 lme.log_medianRT.loads.MCI <- lapply(loads, function(x) {
     lmer(residPCA ~ log_medianRT + apoe4 + c.age_v2 + site_v2rev + 
-                    Device + acamedbin + c.DSFMAX_v2 + 
-                    rMCI_cons_bin + c.nas201tran + 
+                    Device + acamedbin + c.DSFMAX_V2_nasp + 
+                    rMCI_cons_4grp + c.nas201tran + 
                     (1 | case), 
-         data=filter(pupilChoiceRT, Load==x))
+         data=filter(pupilRT, Load==x))
 })
 lapply(lme.log_medianRT.loads.MCI, summary)
 ```
@@ -553,11 +400,11 @@ contrasts.facLoad.log_stdRT.MCI = rbind(
 )
 
 lme.facLoad.log_stdRT.MCI = lmer(residPCA ~ facLoad*(log_stdRT + 
-                                                        c.DSFMAX_v2 +
-                                                        rMCI_cons_bin) + 
+                                                        c.DSFMAX_V2_nasp +
+                                                        rMCI_cons_4grp) + 
                                     apoe4 + c.age_v2 + site_v2rev + 
                                     Device + acamedbin + c.nas201tran + 
-                                    (1 | case/vetsaid), data=pupilChoiceRT)
+                                    (1 | case/vetsaid), data=pupilRT)
 summary(lme.facLoad.log_stdRT.MCI)
 summary(glht(lme.facLoad.log_stdRT.MCI, 
              contrasts.facLoad.log_stdRT.MCI),
@@ -568,10 +415,10 @@ Test for differences based on std RT within each level of Load
 ```{r}
 lme.log_stdRT.loads.MCI <- lapply(loads, function(x) {
     lmer(residPCA ~ log_stdRT + apoe4 + c.age_v2 + site_v2rev + 
-                    Device + acamedbin + c.DSFMAX_v2 + 
-                    rMCI_cons_bin + c.nas201tran + 
+                    Device + acamedbin + c.DSFMAX_V2_nasp + 
+                    rMCI_cons_4grp + c.nas201tran + 
                     (1 | case), 
-         data=filter(pupilChoiceRT, Load==x))
+         data=filter(pupilRT, Load==x))
 })
 lapply(lme.log_stdRT.loads.MCI, summary)
 ```
@@ -585,11 +432,11 @@ contrasts.facLoad.log_cvRT.MCI = rbind(
 )
 
 lme.facLoad.log_cvRT.MCI = lmer(residPCA ~ facLoad*(log_cvRT + 
-                                                        c.DSFMAX_v2 +
-                                                        rMCI_cons_bin) + 
+                                                        c.DSFMAX_V2_nasp +
+                                                        rMCI_cons_4grp) + 
                                     apoe4 + c.age_v2 + site_v2rev + 
                                     Device + acamedbin + c.nas201tran + 
-                                    (1 | case/vetsaid), data=pupilChoiceRT)
+                                    (1 | case/vetsaid), data=pupilRT)
 summary(lme.facLoad.log_cvRT.MCI)
 summary(glht(lme.facLoad.log_cvRT.MCI, 
              contrasts.facLoad.log_cvRT.MCI),
@@ -600,10 +447,10 @@ Test for differences based on cv RT within each level of Load
 ```{r}
 lme.log_cvRT.loads.MCI <- lapply(loads, function(x) {
     lmer(residPCA ~ log_cvRT + apoe4 + c.age_v2 + site_v2rev + 
-                    Device + acamedbin + c.DSFMAX_v2 + 
-                    rMCI_cons_bin + c.nas201tran + 
+                    Device + acamedbin + c.DSFMAX_V2_nasp + 
+                    rMCI_cons_4grp + c.nas201tran + 
                     (1 | case), 
-         data=filter(pupilChoiceRT, Load==x))
+         data=filter(pupilRT, Load==x))
 })
 lapply(lme.log_cvRT.loads.MCI, summary)
 ```
@@ -613,41 +460,41 @@ lapply(lme.log_cvRT.loads.MCI, summary)
 
 Plot pupil dilation by digit span max quantile
 ```{r, echo=FALSE}
-summaryResidPCA.DSFMAX_v2 = summarySEwithin(pupilChoiceRT, 
+summaryResidPCA.DSFMAX_V2_nasp = summarySEwithin(pupilRT, 
                 measurevar="residPCA", 
                 idvar="vetsaid", 
                 withinvars="Load",
-                betweenvars="q.c.DSFMAX_v2",
+                betweenvars="q.c.DSFMAX_V2_nasp",
                 na.rm=TRUE)
   
-p.DSFMAX_v2 = summaryResidPCA.DSFMAX_v2 %>%
-          filter(q.c.DSFMAX_v2==1 | q.c.DSFMAX_v2==4) %>%
+p.DSFMAX_V2_nasp = summaryResidPCA.DSFMAX_V2_nasp %>%
+          filter(q.c.DSFMAX_V2_nasp==1 | q.c.DSFMAX_V2_nasp==4) %>%
           ggplot(., aes(x=Load,y=residPCA,
-                        color=q.c.DSFMAX_v2,
-                        group=q.c.DSFMAX_v2)) +
+                        color=q.c.DSFMAX_V2_nasp,
+                        group=q.c.DSFMAX_V2_nasp)) +
             geom_line() +
             geom_errorbar(width=.1, aes(ymin=residPCA-ci,ymax=residPCA+ci)) +
             ggtitle("Max digit span") + theme_bw(16) +
             ylab("Change in Pupil Diameter\n(Adjusted for Baseline)") +
             scale_color_discrete(name="Max digit span\nquantile",
                                  labels=c("Lower","Upper"))
-print(p.DSFMAX_v2)
-ggsave("K:/Projects/Pupil_ReactionTime/results/pupilRT_MaxDigitSpan.pdf", p.DSFMAX_v2)
+print(p.DSFMAX_V2_nasp)
+ggsave("~/netshare/K/Projects/Pupil_ReactionTime/results/pupilRT_MaxDigitSpan.pdf", p.DSFMAX_V2_nasp)
 ```
 
 Plot pupil dilation by digit span max quantile
 ```{r, echo=FALSE}
-summaryResidPCA.MCI = summarySEwithin(pupilChoiceRT, 
+summaryResidPCA.MCI = summarySEwithin(pupilRT, 
                 measurevar="residPCA", 
                 idvar="vetsaid", 
                 withinvars="Load",
-                betweenvars="rMCI_cons_bin",
+                betweenvars="rMCI_cons_4grp",
                 na.rm=TRUE)
   
 p.MCI = summaryResidPCA.MCI %>%
           ggplot(., aes(x=Load,y=residPCA,
-                        color=rMCI_cons_bin,
-                        group=rMCI_cons_bin)) +
+                        color=rMCI_cons_4grp,
+                        group=rMCI_cons_4grp)) +
             geom_line() +
             geom_errorbar(width=.1, aes(ymin=residPCA-ci,ymax=residPCA+ci)) +
             ggtitle("MCI Status") + theme_bw(16) +
@@ -657,14 +504,14 @@ p.MCI = summaryResidPCA.MCI %>%
                                           "Single Domain MCI",
                                           "Multi-Domain MCI"))
 print(p.MCI)
-ggsave("K:/Projects/Pupil_ReactionTime/results/pupilRT_MCI.pdf", p.MCI)
+ggsave("~/netshare/K/Projects/Pupil_ReactionTime/results/pupilRT_MCI.pdf", p.MCI)
 ```
 ----------------------------
 
 ```{r, include=FALSE}
 #Save out analysis dataset
-write.csv(pupilChoiceRT,
-          "K:/Projects/Pupil_ReactionTime/data/pupilDS_ChoiceRT_AnalysisDataset.csv",
+write.csv(pupilRT,
+          "~/netshare/K/Projects/Pupil_ReactionTime/data/pupilDS_ChoiceRT_AnalysisDataset.csv",
           row.names=F)
 ```
 

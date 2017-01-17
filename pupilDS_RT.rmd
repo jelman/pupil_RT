@@ -32,7 +32,7 @@ Load data.
 ```{r}
 pupilRT = read.csv("~/netshare/K/Projects/Pupil_ReactionTime/data/pupil_RT.csv", 
                          stringsAsFactors = FALSE)
-pupilRT = pupilRT[!is.na(pupilRT$PCA) & !is.na(pupilRT$rMCI_cons_v2pe) & !is.na(pupilRT$CHRTGMEANLOG_V2_nasp),]
+pupilRT = pupilRT[!is.na(pupilRT$PCA) & !is.na(pupilRT$CHRTGMEANLOG_V2_nasp),]
 pupilRT = subset(pupilRT, (VETSAGRP=='V1V2') | (VETSAGRP=='V2AR'))
 str(pupilRT)
 ```
@@ -280,47 +280,47 @@ plotQuartiles = function(df, mod, varname, direction){
                 withinvars="Load",
                 betweenvars=qvarname,
                 na.rm=TRUE)
-p.raw = ggplot(summarydf, aes_string(x="Load",y="residPCA",
-                                        color=qvarname,
-                                        group=qvarname)) +
-  geom_line(size=1) +
-  geom_errorbar(width=.2,size=1, aes(ymin=residPCA-ci,ymax=residPCA+ci)) +
-  theme_bw(20) + ylab("Change in Pupil Diameter") +
-  scale_color_brewer(name="Quartile", palette='RdBu', direction=-1) + 
-          theme(plot.title = element_text(size=20),
-                axis.title = element_text(size=18),
-                axis.text.x = element_text(size=16),
-                legend.background = element_rect(fill = "transparent"),
-                legend.justification=c(1,0), legend.position=c(1,0), 
-                legend.text.align=1,
-                legend.title.align=0,
-                legend.title = element_text(size=16),
-                legend.text = element_text(size=16))
-
-# Plot predicted values
-intterm = paste("facLoad", varname, sep=":")
-
-dfpred = sjp.int(mod, type="eff", int.term=intterm, 
-               swap.pred=T, mdrt.values = "quart", prnt.plot=F)$data.list[[1]]
-levels(dfpred$grp) = seq(length(levels(dfpred$grp)))
-p.pred = ggplot(data=subset(dfpred, !grp==3), aes(x=x, y=y, color=grp, group=grp)) + 
-          geom_line(size=1) +
-          geom_errorbar(width=.2,size=1, aes(ymin=conf.low,ymax=conf.high)) +
-          ylab(expression(paste("Predicted ", Delta, " Pupil Diameter"))) + xlab("Load") +
-          scale_color_brewer(name="Quartile",palette='RdBu',direction=direction,labels=seq(4)) + 
-          scale_x_continuous(breaks=c(3,6,9)) + theme_bw(16) +
-          theme(plot.title = element_text(size=20),
-                axis.title = element_text(size=18),
-                axis.text.x = element_text(size=16),
-                legend.background = element_rect(fill = "transparent"),
-                legend.justification=c(1,0), legend.position=c(1,0), 
-                legend.text.align=1,
-                legend.title.align=0,
-                legend.title = element_text(size=16),
-                legend.text = element_text(size=16))
-
-g = arrangeGrob(p.raw, p.pred, top=varname, ncol=2)
-g
+  p.raw = ggplot(summarydf, aes_string(x="Load",y="residPCA",
+                                          color=qvarname,
+                                          group=qvarname)) +
+    geom_line(size=1) +
+    geom_errorbar(width=.2,size=1, aes(ymin=residPCA-ci,ymax=residPCA+ci)) +
+    theme_bw(20) + ylab("Change in Pupil Diameter") +
+    scale_color_brewer(name="Quartile", palette='RdBu', direction=-1) + 
+            theme(plot.title = element_text(size=20),
+                  axis.title = element_text(size=18),
+                  axis.text.x = element_text(size=16),
+                  legend.background = element_rect(fill = "transparent"),
+                  legend.justification=c(1,0), legend.position=c(1,0), 
+                  legend.text.align=1,
+                  legend.title.align=0,
+                  legend.title = element_text(size=16),
+                  legend.text = element_text(size=16))
+  
+  # Plot predicted values
+  intterm = paste("facLoad", varname, sep=":")
+  
+  dfpred = sjp.int(mod, type="eff", int.term=intterm, 
+                 swap.pred=T, mdrt.values = "quart", prnt.plot=F)$data.list[[1]]
+  levels(dfpred$grp) = seq(length(levels(dfpred$grp)))
+  p.pred = ggplot(data=subset(dfpred, !grp==3), aes(x=x, y=y, color=grp, group=grp)) + 
+            geom_line(size=1) +
+            geom_errorbar(width=.2,size=1, aes(ymin=conf.low,ymax=conf.high)) +
+            ylab(expression(paste("Predicted ", Delta, " Pupil Diameter"))) + xlab("Load") +
+            scale_color_brewer(name="Quartile",palette='RdBu',direction=direction,labels=seq(4)) + 
+            scale_x_continuous(breaks=c(3,6,9)) + theme_bw(16) +
+            theme(plot.title = element_text(size=20),
+                  axis.title = element_text(size=18),
+                  axis.text.x = element_text(size=16),
+                  legend.background = element_rect(fill = "transparent"),
+                  legend.justification=c(1,0), legend.position=c(1,0), 
+                  legend.text.align=1,
+                  legend.title.align=0,
+                  legend.title = element_text(size=16),
+                  legend.text = element_text(size=16))
+  
+  g = arrangeGrob(p.raw, p.pred, top=varname, ncol=2)
+  g
 }
 ```
 
@@ -333,97 +333,108 @@ g
 Run model testing interaction of load with log mean choice RT.
 ```{r}
 
-lme.facLoad.CHRTGMEANLOG.MCI = lmer(residPCA ~ facLoad*(CHRTGMEANLOG_V2_nasp + 
-                                                        c.DSFMAX_V2_nasp +
-                                                        rMCI_cons_4grp) + 
+lme.facLoad.CHRTGMEANLOG = lmer(residPCA ~ facLoad*(CHRTGMEANLOG_V2_nasp + 
+                                                        c.DSFMAX_V2_nasp) + 
                                     apoe4 + c.age_v2 + site_v2rev + Device + acamedbin + 
                                     (1 | case/vetsaid), REML=F, data=pupilRT)
-summary(lme.facLoad.CHRTGMEANLOG.MCI)
-anova(lme.facLoad.CHRTGMEANLOG.MCI)
+summary(lme.facLoad.CHRTGMEANLOG)
+anova(lme.facLoad.CHRTGMEANLOG)
 ```
 
 Plot change in pupil dilation by log mean choice RT quartile.
 ```{r}
-CHRTMEANLOG.fig = plotQuartiles(pupilRT, lme.facLoad.CHRTGMEANLOG.MCI, "CHRTGMEANLOG_V2_nasp", -1)
+CHRTMEANLOG.fig = plotQuartiles(pupilRT, lme.facLoad.CHRTGMEANLOG, "CHRTGMEANLOG_V2_nasp", -1)
 plot(CHRTMEANLOG.fig)
-# ggsave("/home/jelman/netshare/K/Projects/Pupil_ReactionTime/results/PupilDilation_CHRTGMEANLOG_V2_nasp.png", 
+# ggsave("/home/jelman/netshare/K/Projects/Pupil_ReactionTime/results/PupilDilation_CHRTGMEANLOG_V2_nasp.png",
 #        CHRTMEANLOG.fig, height=6, width=12, dpi=300)
+# ggsave("/home/jelman/netshare/K/Projects/Pupil_ReactionTime/results/PupilDilation_CHRTGMEANLOG_V2_nasp_Raw.png",
+#        CHRTMEANLOG.fig$grobs[[1]], height=6, width=8, dpi=300)
+# ggsave("/home/jelman/netshare/K/Projects/Pupil_ReactionTime/results/PupilDilation_CHRTGMEANLOG_V2_nasp_Predicted.png",
+#        CHRTMEANLOG.fig$grobs[[2]], height=6, width=8, dpi=300)
 ```
 
 
 Run model testing interaction of load with log std choice RT.
 ```{r}
 
-lme.facLoad.CHRTGSTDLOG.MCI = lmer(residPCA ~ facLoad*(CHRTGSTDLOG_V2_nasp + 
-                                                        c.DSFMAX_V2_nasp +
-                                                        rMCI_cons_4grp) + 
+lme.facLoad.CHRTGSTDLOG = lmer(residPCA ~ facLoad*(CHRTGSTDLOG_V2_nasp + 
+                                                   c.DSFMAX_V2_nasp) + 
                                     apoe4 + c.age_v2 + site_v2rev + Device + acamedbin + 
                                     (1 | case/vetsaid), REML=F, data=pupilRT)
-summary(lme.facLoad.CHRTGSTDLOG.MCI)
-anova(lme.facLoad.CHRTGSTDLOG.MCI)
+summary(lme.facLoad.CHRTGSTDLOG)
+anova(lme.facLoad.CHRTGSTDLOG)
 ```
 
 Plot change in pupil dilation by log std choice RT quartile.
 ```{r}
-CHRTSTDLOG.fig = plotQuartiles(pupilRT, lme.facLoad.CHRTGSTDLOG.MCI, "CHRTGSTDLOG_V2_nasp", -1)
+CHRTSTDLOG.fig = plotQuartiles(pupilRT, lme.facLoad.CHRTGSTDLOG, "CHRTGSTDLOG_V2_nasp", -1)
 plot(CHRTSTDLOG.fig)
-# ggsave("/home/jelman/netshare/K/Projects/Pupil_ReactionTime/results/PupilDilation_CHRTGSTDLOG_V2_nasp.png", 
+# ggsave("/home/jelman/netshare/K/Projects/Pupil_ReactionTime/results/PupilDilation_CHRTGSTDLOG_V2_nasp.png",
 #        CHRTSTDLOG.fig, height=6, width=12, dpi=300)
+# ggsave("/home/jelman/netshare/K/Projects/Pupil_ReactionTime/results/PupilDilation_CHRTGSTDLOG_V2_nasp_Raw.png",
+#        CHRTSTDLOG.fig$grobs[[1]], height=6, width=8, dpi=300)
+# ggsave("/home/jelman/netshare/K/Projects/Pupil_ReactionTime/results/PupilDilation_CHRTGSTDLOG_V2_nasp_Predicted.png",
+#        CHRTSTDLOG.fig$grobs[[2]], height=6, width=8, dpi=300)
 ```
 
 
 Run model testing interaction of load with CV choice RT.
 ```{r}
 
-lme.facLoad.CHRTGCV.MCI = lmer(residPCA ~ facLoad*(CHRTGCV_V2_nasp + 
-                                                        c.DSFMAX_V2_nasp +
-                                                        rMCI_cons_4grp) + 
+lme.facLoad.CHRTGCV = lmer(residPCA ~ facLoad*(CHRTGCV_V2_nasp + 
+                                               c.DSFMAX_V2_nasp) + 
                                     apoe4 + c.age_v2 + site_v2rev + Device + acamedbin + 
                                     (1 | case/vetsaid), REML=F, data=pupilRT)
-summary(lme.facLoad.CHRTGCV.MCI)
-anova(lme.facLoad.CHRTGCV.MCI)
+summary(lme.facLoad.CHRTGCV)
+anova(lme.facLoad.CHRTGCV)
 ```
 
 Plot change in pupil dilation by CV choice RT quartile.
 ```{r}
-CHRTGCV.fig = plotQuartiles(pupilRT, lme.facLoad.CHRTGCV.MCI, "CHRTGCV_V2_nasp", -1)
+CHRTGCV.fig = plotQuartiles(pupilRT, lme.facLoad.CHRTGCV, "CHRTGCV_V2_nasp", -1)
 plot(CHRTGCV.fig)
-# ggsave("/home/jelman/netshare/K/Projects/Pupil_ReactionTime/results/PupilDilation_CHRTGCV_V2_nasp.png", 
+# ggsave("/home/jelman/netshare/K/Projects/Pupil_ReactionTime/results/PupilDilation_CHRTGCV_V2_nasp.png",
 #        CHRTGCV.fig, height=6, width=12, dpi=300)
+# ggsave("/home/jelman/netshare/K/Projects/Pupil_ReactionTime/results/PupilDilation_CHRTGCV_V2_nasp_Raw.png",
+#        CHRTGCV.fig$grobs[[1]], height=6, width=8, dpi=300)
+# ggsave("/home/jelman/netshare/K/Projects/Pupil_ReactionTime/results/PupilDilation_CHRTGCV_V2_nasp_Predicted.png",
+#        CHRTGCV.fig$grobs[[2]], height=6, width=8, dpi=300)
 ```
 
 Run model testing interaction of load with residualized log std choice RT.
 ```{r}
 
-lme.facLoad.residCHRTGSTDLOG.MCI = lmer(residPCA ~ facLoad*(residCHRTGSTDLOG_V2_nasp + 
-                                                        c.DSFMAX_V2_nasp +
-                                                        rMCI_cons_4grp) + 
+lme.facLoad.residCHRTGSTDLOG = lmer(residPCA ~ facLoad*(residCHRTGSTDLOG_V2_nasp + 
+                                                        c.DSFMAX_V2_nasp) + 
                                     apoe4 + c.age_v2 + site_v2rev + Device + acamedbin + 
                                     (1 | case/vetsaid), REML=F, data=pupilRT)
-summary(lme.facLoad.residCHRTGSTDLOG.MCI)
-anova(lme.facLoad.residCHRTGSTDLOG.MCI)
+summary(lme.facLoad.residCHRTGSTDLOG)
+anova(lme.facLoad.residCHRTGSTDLOG)
 ```
 
 Plot change in pupil dilation by residualized log std choice RT quartile.
 ```{r}
-residCHRTSTDLOG.fig = plotQuartiles(pupilRT, lme.facLoad.residCHRTGSTDLOG.MCI, "residCHRTGSTDLOG_V2_nasp", -1)
+residCHRTSTDLOG.fig = plotQuartiles(pupilRT, lme.facLoad.residCHRTGSTDLOG, "residCHRTGSTDLOG_V2_nasp", -1)
 plot(residCHRTSTDLOG.fig)
-# ggsave("/home/jelman/netshare/K/Projects/Pupil_ReactionTime/results/PupilDilation_residCHRTGSTDLOG_V2_nasp.png", 
-#        residCHRTSTDLOG.fig, height=6, width=12, dpi=300)
+# ggsave("/home/jelman/netshare/K/Projects/Pupil_ReactionTime/results/PupilDilation_residCHRTGSTDLOG_V2_nasp.png",
+#        residCHRTSTDLOG.fig, height=6, width=12,dpi=300)
+# ggsave("/home/jelman/netshare/K/Projects/Pupil_ReactionTime/results/PupilDilation_residCHRTGSTDLOG_V2_nasp_Raw.png",
+#        residCHRTSTDLOG.fig$grobs[[1]], height=6, width=8, dpi=300)
+# ggsave("/home/jelman/netshare/K/Projects/Pupil_ReactionTime/results/PupilDilation_residCHRTGSTDLOG_V2_nasp_Predicted.png",
+#        residCHRTSTDLOG.fig$grobs[[2]], height=6, width=8, dpi=300)
 ```
 
 
 Run model testing interaction of load with log mean and std choice RT.
 ```{r}
 
-lme.facLoad.CHRTGMEANLOG.CHRTSTDLOG.MCI = lmer(residPCA ~ facLoad*(CHRTGMEANLOG_V2_nasp + 
+lme.facLoad.CHRTGMEANLOG.CHRTSTDLOG = lmer(residPCA ~ facLoad*(CHRTGMEANLOG_V2_nasp + 
                                                         CHRTGSTDLOG_V2_nasp +
-                                                        c.DSFMAX_V2_nasp +
-                                                        rMCI_cons_4grp) + 
+                                                        c.DSFMAX_V2_nasp) + 
                                     apoe4 + c.age_v2 + site_v2rev + Device + acamedbin + 
                                     (1 | case/vetsaid), REML=F, data=pupilRT)
-summary(lme.facLoad.CHRTGMEANLOG.CHRTSTDLOG.MCI)
-anova(lme.facLoad.CHRTGMEANLOG.CHRTSTDLOG.MCI)
+summary(lme.facLoad.CHRTGMEANLOG.CHRTSTDLOG)
+anova(lme.facLoad.CHRTGMEANLOG.CHRTSTDLOG)
 ```
 
 
@@ -432,97 +443,108 @@ anova(lme.facLoad.CHRTGMEANLOG.CHRTSTDLOG.MCI)
 Run model testing interaction of load with log mean simple RT.
 ```{r}
 
-lme.facLoad.SRTGMEANLOG.MCI = lmer(residPCA ~ facLoad*(SRTGMEANLOG_V2_nasp + 
-                                                        c.DSFMAX_V2_nasp +
-                                                        rMCI_cons_4grp) + 
+lme.facLoad.SRTGMEANLOG = lmer(residPCA ~ facLoad*(SRTGMEANLOG_V2_nasp + 
+                                                        c.DSFMAX_V2_nasp) + 
                                     apoe4 + c.age_v2 + site_v2rev + Device + acamedbin + 
                                     (1 | case/vetsaid), REML=F, data=pupilRT)
-summary(lme.facLoad.SRTGMEANLOG.MCI)
-anova(lme.facLoad.SRTGMEANLOG.MCI)
+summary(lme.facLoad.SRTGMEANLOG)
+anova(lme.facLoad.SRTGMEANLOG)
 ```
 
 Plot change in pupil dilation by log mean simple RT quartile.
 ```{r}
-SRTMEANLOG.fig = plotQuartiles(pupilRT, lme.facLoad.SRTGMEANLOG.MCI, "SRTGMEANLOG_V2_nasp", -1)
+SRTMEANLOG.fig = plotQuartiles(pupilRT, lme.facLoad.SRTGMEANLOG, "SRTGMEANLOG_V2_nasp", -1)
 plot(SRTMEANLOG.fig)
-# ggsave("/home/jelman/netshare/K/Projects/Pupil_ReactionTime/results/PupilDilation_SRTGMEANLOG_V2_nasp.png", 
+# ggsave("/home/jelman/netshare/K/Projects/Pupil_ReactionTime/results/PupilDilation_SRTGMEANLOG_V2_nasp.png",
 #        SRTMEANLOG.fig, height=6, width=12, dpi=300)
+# ggsave("/home/jelman/netshare/K/Projects/Pupil_ReactionTime/results/PupilDilation_SRTGMEANLOG_V2_nasp_Raw.png",
+#        SRTMEANLOG.fig$grobs[[1]], height=6, width=8, dpi=300)
+# ggsave("/home/jelman/netshare/K/Projects/Pupil_ReactionTime/results/PupilDilation_SRTGMEANLOG_V2_nasp_Predicted.png",
+#        SRTMEANLOG.fig$grobs[[2]], height=6, width=8, dpi=300)
 ```
 
 
 Run model testing interaction of load with log std simple RT.
 ```{r}
 
-lme.facLoad.SRTGSTDLOG.MCI = lmer(residPCA ~ facLoad*(SRTGSTDLOG_V2_nasp + 
-                                                        c.DSFMAX_V2_nasp +
-                                                        rMCI_cons_4grp) + 
+lme.facLoad.SRTGSTDLOG = lmer(residPCA ~ facLoad*(SRTGSTDLOG_V2_nasp + 
+                                                        c.DSFMAX_V2_nasp) + 
                                     apoe4 + c.age_v2 + site_v2rev + Device + acamedbin + 
                                     (1 | case/vetsaid), REML=F, data=pupilRT)
-summary(lme.facLoad.SRTGSTDLOG.MCI)
-anova(lme.facLoad.SRTGSTDLOG.MCI)
+summary(lme.facLoad.SRTGSTDLOG)
+anova(lme.facLoad.SRTGSTDLOG)
 ```
 
 Plot change in pupil dilation by log std simple RT quartile.
 ```{r}
-SRTSTDLOG.fig = plotQuartiles(pupilRT, lme.facLoad.SRTGSTDLOG.MCI, "SRTGSTDLOG_V2_nasp", -1)
+SRTSTDLOG.fig = plotQuartiles(pupilRT, lme.facLoad.SRTGSTDLOG, "SRTGSTDLOG_V2_nasp", -1)
 plot(SRTSTDLOG.fig)
-# ggsave("/home/jelman/netshare/K/Projects/Pupil_ReactionTime/results/PupilDilation_SRTGSTDLOG_V2_nasp.png", 
+# ggsave("/home/jelman/netshare/K/Projects/Pupil_ReactionTime/results/PupilDilation_SRTGSTDLOG_V2_nasp.png",
 #        SRTSTDLOG.fig, height=6, width=12, dpi=300)
+# ggsave("/home/jelman/netshare/K/Projects/Pupil_ReactionTime/results/PupilDilation_SRTGSTDLOG_V2_nasp_Raw.png",
+#        SRTSTDLOG.fig$grobs[[1]], height=6, width=8, dpi=300)
+# ggsave("/home/jelman/netshare/K/Projects/Pupil_ReactionTime/results/PupilDilation_SRTGSTDLOG_V2_nasp_Predicted.png",
+#        SRTSTDLOG.fig$grobs[[2]], height=6, width=8, dpi=300)
 ```
 
 
 Run model testing interaction of load with CV simple RT.
 ```{r}
 
-lme.facLoad.SRTGCV.MCI = lmer(residPCA ~ facLoad*(SRTGCV_V2_nasp + 
-                                                        c.DSFMAX_V2_nasp +
-                                                        rMCI_cons_4grp) + 
+lme.facLoad.SRTGCV = lmer(residPCA ~ facLoad*(SRTGCV_V2_nasp + 
+                                                        c.DSFMAX_V2_nasp) + 
                                     apoe4 + c.age_v2 + site_v2rev + Device + acamedbin + 
                                     (1 | case/vetsaid), REML=F, data=pupilRT)
-summary(lme.facLoad.SRTGCV.MCI)
-anova(lme.facLoad.SRTGCV.MCI)
+summary(lme.facLoad.SRTGCV)
+anova(lme.facLoad.SRTGCV)
 ```
 
 Plot change in pupil dilation by CV simple RT quartile.
 ```{r}
-SRTGCV.fig = plotQuartiles(pupilRT, lme.facLoad.SRTGCV.MCI, "SRTGCV_V2_nasp", -1)
+SRTGCV.fig = plotQuartiles(pupilRT, lme.facLoad.SRTGCV, "SRTGCV_V2_nasp", -1)
 plot(SRTGCV.fig)
-# ggsave("/home/jelman/netshare/K/Projects/Pupil_ReactionTime/results/PupilDilation_SRTGCV_V2_nasp.png", 
+# ggsave("/home/jelman/netshare/K/Projects/Pupil_ReactionTime/results/PupilDilation_SRTGCV_V2_nasp.png",
 #        SRTGCV.fig, height=6, width=12, dpi=300)
+# ggsave("/home/jelman/netshare/K/Projects/Pupil_ReactionTime/results/PupilDilation_SRTGCV_V2_nasp_Raw.png",
+#        SRTGCV.fig$grobs[[1]], height=6, width=8, dpi=300)
+# ggsave("/home/jelman/netshare/K/Projects/Pupil_ReactionTime/results/PupilDilation_SRTGCV_V2_nasp_Predicted.png",
+#        SRTGCV.fig$grobs[[2]], height=6, width=8, dpi=300)
 ```
 
 Run model testing interaction of load with residualized log std simple RT.
 ```{r}
 
-lme.facLoad.residSRTGSTDLOG.MCI = lmer(residPCA ~ facLoad*(residSRTGSTDLOG_V2_nasp + 
-                                                        c.DSFMAX_V2_nasp +
-                                                        rMCI_cons_4grp) + 
+lme.facLoad.residSRTGSTDLOG = lmer(residPCA ~ facLoad*(residSRTGSTDLOG_V2_nasp + 
+                                                        c.DSFMAX_V2_nasp) + 
                                     apoe4 + c.age_v2 + site_v2rev + Device + acamedbin + 
                                     (1 | case/vetsaid), REML=F, data=pupilRT)
-summary(lme.facLoad.residSRTGSTDLOG.MCI)
-anova(lme.facLoad.residSRTGSTDLOG.MCI)
+summary(lme.facLoad.residSRTGSTDLOG)
+anova(lme.facLoad.residSRTGSTDLOG)
 ```
 
 Plot change in pupil dilation by residualized log std simple RT quartile.
 ```{r}
-residSRTSTDLOG.fig = plotQuartiles(pupilRT, lme.facLoad.residSRTGSTDLOG.MCI, "residSRTGSTDLOG_V2_nasp", -1)
+residSRTSTDLOG.fig = plotQuartiles(pupilRT, lme.facLoad.residSRTGSTDLOG, "residSRTGSTDLOG_V2_nasp", -1)
 plot(residSRTSTDLOG.fig)
-# ggsave("/home/jelman/netshare/K/Projects/Pupil_ReactionTime/results/PupilDilation_residSRTGSTDLOG_V2_nasp.png", 
+# ggsave("/home/jelman/netshare/K/Projects/Pupil_ReactionTime/results/PupilDilation_residSRTGSTDLOG_V2_nasp.png",
 #        residSRTSTDLOG.fig, height=6, width=12, dpi=300)
+# ggsave("/home/jelman/netshare/K/Projects/Pupil_ReactionTime/results/PupilDilation_residSRTGSTDLOG_V2_nasp_Raw.png",
+#        residSRTSTDLOG.fig$grobs[[1]], height=6, width=8, dpi=300)
+# ggsave("/home/jelman/netshare/K/Projects/Pupil_ReactionTime/results/PupilDilation_residSRTGSTDLOG_V2_nasp_Predicted.png",
+#        residSRTSTDLOG.fig$grobs[[2]], height=6, width=8, dpi=300)
 ```
 
 
 Run model testing interaction of load with log mean and std simple RT.
 ```{r}
 
-lme.facLoad.SRTGMEANLOG.SRTSTDLOG.MCI = lmer(residPCA ~ facLoad*(SRTGMEANLOG_V2_nasp + 
+lme.facLoad.SRTGMEANLOG.SRTSTDLOG = lmer(residPCA ~ facLoad*(SRTGMEANLOG_V2_nasp + 
                                                         SRTGSTDLOG_V2_nasp +
-                                                        c.DSFMAX_V2_nasp +
-                                                        rMCI_cons_4grp) + 
+                                                        c.DSFMAX_V2_nasp) + 
                                     apoe4 + c.age_v2 + site_v2rev + Device + acamedbin + 
                                     (1 | case/vetsaid), REML=F, data=pupilRT)
-summary(lme.facLoad.SRTGMEANLOG.SRTSTDLOG.MCI)
-anova(lme.facLoad.SRTGMEANLOG.SRTSTDLOG.MCI)
+summary(lme.facLoad.SRTGMEANLOG.SRTSTDLOG)
+anova(lme.facLoad.SRTGMEANLOG.SRTSTDLOG)
 ```
 
 
@@ -530,35 +552,35 @@ anova(lme.facLoad.SRTGMEANLOG.SRTSTDLOG.MCI)
 
 Test for differences based on log mean choice RT within each level of Load
 ```{r}
-lme.CHRTGMEANLOG.loads.MCI <- lapply(loads, function(x) {
+lme.CHRTGMEANLOG.loads <- lapply(loads, function(x) {
     lmer(residPCA ~ CHRTGMEANLOG_V2_nasp + c.DSFMAX_V2_nasp + apoe4 + 
-           c.age_v2 + site_v2rev + Device + acamedbin + rMCI_cons_4grp + 
+           c.age_v2 + site_v2rev + Device + acamedbin + 
                     (1 | case), 
          data=filter(pupilRT, Load==x))
 })
-lapply(lme.CHRTGMEANLOG.loads.MCI, summary)
+lapply(lme.CHRTGMEANLOG.loads, summary)
 ```
 
 Test for differences based on log std choice RT within each level of Load
 ```{r}
-lme.CHRTGSTDLOG.loads.MCI <- lapply(loads, function(x) {
+lme.CHRTGSTDLOG.loads <- lapply(loads, function(x) {
     lmer(residPCA ~ CHRTGSTDLOG_V2_nasp + c.DSFMAX_V2_nasp + apoe4 + 
-           c.age_v2 + site_v2rev + Device + acamedbin + rMCI_cons_4grp + 
+           c.age_v2 + site_v2rev + Device + acamedbin +  
                     (1 | case), 
          data=filter(pupilRT, Load==x))
 })
-lapply(lme.CHRTGSTDLOG.loads.MCI, summary)
+lapply(lme.CHRTGSTDLOG.loads, summary)
 ```
 
 Test for differences based on CV choice RT within each level of Load
 ```{r}
-lme.CHRTGCV.loads.MCI <- lapply(loads, function(x) {
+lme.CHRTGCV.loads <- lapply(loads, function(x) {
     lmer(residPCA ~ CHRTGCV_V2_nasp + c.DSFMAX_V2_nasp + apoe4 + 
-           c.age_v2 + site_v2rev + Device + acamedbin + rMCI_cons_4grp + 
+           c.age_v2 + site_v2rev + Device + acamedbin +  
                     (1 | case), 
          data=filter(pupilRT, Load==x))
 })
-lapply(lme.CHRTGCV.loads.MCI, summary)
+lapply(lme.CHRTGCV.loads, summary)
 ```
 
 
@@ -598,39 +620,6 @@ print(pDSFMAX_v2raw)
 # ggsave("~/netshare/K/Projects/Pupil_ReactionTime/results/pupilRT_MaxDigitSpan.pdf", pDSFMAX_v2raw)
 ```
 
-Plot pupil dilation by MCI status
-```{r, echo=FALSE}
-summaryResidPCA.MCI = summarySEwithin(pupilRT, 
-                measurevar="residPCA", 
-                idvar="vetsaid", 
-                withinvars="Load",
-                betweenvars="rMCI_cons_4grp",
-                na.rm=TRUE)
-  
-p.MCIraw = summaryResidPCA.MCI %>%
-          ggplot(., aes(x=Load,y=residPCA,
-                        color=rMCI_cons_4grp,
-                        group=rMCI_cons_4grp)) +
-        theme_bw(16) +
-        ylab("Change in Pupil Diameter\n(Adjusted for Baseline)") +
-        geom_line(size=1) +
-        geom_errorbar(width=.2,size=1, aes(ymin=residPCA-ci,ymax=residPCA+ci)) +
-        theme_bw(20) + ylab("Change in Pupil Diameter") +
-          scale_color_brewer(name="MCI Status",palette='Set1',
-                             labels=c("CN","naSMCI","aSMCI","MMCI")) + 
-        theme(plot.title = element_text(size=20),
-              axis.title = element_text(size=18),
-              axis.text.x = element_text(size=16),
-              legend.background = element_rect(fill = "transparent"),
-              legend.justification=c(1,0), legend.position=c(1,0), 
-              legend.text.align=1,
-              legend.title.align=0,
-              legend.title = element_text(size=16),
-              legend.text = element_text(size=16))
-
-print(p.MCIraw)
-# ggsave("~/netshare/K/Projects/Pupil_ReactionTime/results/pupilRT_MCI.pdf", p.MCIraw)
-```
 ----------------------------
 
 ```{r, include=FALSE}

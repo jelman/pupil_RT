@@ -48,7 +48,10 @@ pupildf = pupildf.drop(['case', 'twin', 'zyg14'], axis=1)
 
 # Load Reaction Time qc data
 RTdf = pd.read_csv(rt_fname)
-RTdf = RTdf.loc[RTdf['TrialType']=='Simple', ['vetsaid','ZRT_v2','RTCOMPLETE_v2']]
+hitratedf = RTdf.pivot(index='vetsaid',columns='TrialType',values='hitrate')
+hitratedf = hitratedf.rename(columns={"Choice":"CHHRT", "Simple":"SHRT"})
+RTdf = RTdf.loc[RTdf.TrialType=='Simple',['vetsaid','ZRT_v2','RTCOMPLETE_v2']]
+RTdf = RTdf.join(hitratedf, on="vetsaid")
 
 # Load MCI data
 MCIdf = pd.read_csv(mci_fname)

@@ -1,8 +1,8 @@
 ---
 title: "Pupillometry and Reaction Time"
 author: "Jeremy Elman"
-date: "`r Sys.Date()`"
-output: html_document
+date: '`r Sys.Date()`'
+output: pdf_document
 ---
 
 ```{r global_options, include=FALSE}
@@ -437,6 +437,15 @@ summary(lme.facLoad.CHRTGMEANLOG.CHRTSTDLOG)
 anova(lme.facLoad.CHRTGMEANLOG.CHRTSTDLOG)
 ```
 
+Run model testing interaction of load with hit rate.
+```{r}
+
+lme.facLoad.CHHRT = lmer(residPCA ~ facLoad*(CHHRT + c.DSFMAX_V2_nasp) + 
+                                    apoe4 + c.age_v2 + site_v2rev + Device + acamedbin + 
+                                    (1 | case/vetsaid), REML=F, data=pupilRT)
+summary(lme.facLoad.CHHRT)
+anova(lme.facLoad.CHHRT)
+```
 
 ## Simple RT
 
@@ -547,6 +556,15 @@ summary(lme.facLoad.SRTGMEANLOG.SRTSTDLOG)
 anova(lme.facLoad.SRTGMEANLOG.SRTSTDLOG)
 ```
 
+Run model testing interaction of load with hit rate.
+```{r}
+
+lme.facLoad.SHRT = lmer(residPCA ~ facLoad*(SHRT + c.DSFMAX_V2_nasp) + 
+                                    apoe4 + c.age_v2 + site_v2rev + Device + acamedbin + 
+                                    (1 | case/vetsaid), REML=F, data=pupilRT)
+summary(lme.facLoad.SHRT)
+anova(lme.facLoad.SHRT)
+```
 
 # Mixed Effects Models: Within level of load
 
